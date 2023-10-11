@@ -882,6 +882,7 @@ with_flowcachesize
 with_flowlinesize
 with_msects
 with_systemdsystemunitdir
+with_libtorch
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1591,6 +1592,7 @@ Optional Packages:
                           precision output instead of microsecond precision
   --with-systemdsystemunitdir=DIR
                           Directory for systemd service files
+  --with-libtorch         Path to LibTorch installation directory
 
 Some influential environment variables:
   CC          C compiler command
@@ -20005,6 +20007,31 @@ if [ -z "$HAVE_GOOGLETEST_TRUE" ]; then
 subdirs="$subdirs googletest"
 
 fi
+
+
+# Check whether --with-libtorch was given.
+if test ${with_libtorch+y}
+then :
+  withval=$with_libtorch;
+fi
+
+if test "x$with_libtorch" != "xno"; then
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for LibTorch" >&5
+printf %s "checking for LibTorch... " >&6; }
+  if test -f "$with_libtorch/lib/libtorch.so"; then
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+printf "%s\n" "yes" >&6; }
+    LDFLAGS="$LDFLAGS $(with_libtorch)/lib/libtorch.so"
+    CPPFLAGS="$CPPFLAGS  -I $with_libtorch/include -I $with_libtorch/include/torch/csrc/api/include   -I thirdparty -I thirdparty/tomlc99  "
+    LIBS="$LIBS -Wl,-rpath,$with_libtorch/lib -Wl,--no-as-needed,"$with_libtorch/lib/libtorch_cpu.so"  -Wl,--no-as-needed,"$with_libtorch/lib/libtorch.so"  -Wl,--as-needed $with_libtorch/lib/libc10.so"
+  else
+    as_fn_error $? "LibTorch not found in the specified directory" "$LINENO" 5
+  fi
+else
+  as_fn_error $? "LibTorch is required. Use --with-libtorch option to specify its location." "$LINENO" 5
+fi
+
+
 
 ac_config_files="$ac_config_files Makefile ipfixprobe.spec ipfixprobe.bash input/nfbCInterface/Makefile init/Makefile tests/Makefile tests/functional/Makefile tests/unit/Makefile"
 
