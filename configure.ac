@@ -440,8 +440,8 @@ if test "x$with_libtorch" != "xno"; then
   AC_MSG_CHECKING([for LibTorch])
   if test -f "$with_libtorch/lib/libtorch.so"; then
     AC_MSG_RESULT([yes])
-    LDFLAGS="$LDFLAGS -Wl,-rpath,$with_libtorch/lib"
-    CPPFLAGS="$CPPFLAGS -I$with_libtorch/include"
+    CPPFLAGS="$CPPFLAGS  -I $with_libtorch/include -I $with_libtorch/include/torch/csrc/api/include   -I thirdparty -I thirdparty/tomlc99  "
+    LIBS="$LIBS -Wl,-rpath,$with_libtorch/lib -Wl,--no-as-needed,"$with_libtorch/lib/libtorch_cpu.so"  -Wl,--no-as-needed,"$with_libtorch/lib/libtorch.so"  -Wl,--as-needed $with_libtorch/lib/libc10.so"
   else
     AC_MSG_ERROR([LibTorch not found in the specified directory])
   fi

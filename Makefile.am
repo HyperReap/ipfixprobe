@@ -11,7 +11,7 @@ DISTCHECK_CONFIGURE_FLAGS="--with-systemdsystemunitdir=$$dc_install_base/$(syste
 
 ipfixprobe_LDFLAGS=-lpthread -ldl -latomic $(LIBTORCH_LIBS)
 ipfixprobe_CFLAGS=-I$(srcdir)/include/ -fPIC $(LIBTORCH_CFLAGS)
-ipfixprobe_CXXFLAGS=-std=gnu++11 -Wno-write-strings -I$(srcdir)/include/ -fPIC
+ipfixprobe_CXXFLAGS=-std=gnu++17 -Wno-write-strings -I$(srcdir)/include/ -fPIC $(LIBTORCH_CFLAGS)
 
 if OS_CYGWIN
 ipfixprobe_CXXFLAGS+=-Wl,--export-all-symbols
@@ -134,7 +134,9 @@ ipfixprobe_process_src=\
 		process/nettisa.hpp \
 		process/nettisa.cpp \
 		process/flow_hash.hpp \
-		process/flow_hash.cpp
+		process/flow_hash.cpp \
+		process/neuron_plugin.hpp \
+		process/neuron_plugin.cpp 
 
 if WITH_QUIC
 ipfixprobe_process_src+=\
