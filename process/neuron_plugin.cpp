@@ -27,6 +27,7 @@
  */
 
 #include <iostream>
+#include <torch/torch.h>
 
 #include "neuron_plugin.hpp"
 

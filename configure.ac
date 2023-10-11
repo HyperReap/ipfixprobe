@@ -434,6 +434,23 @@ if [[ -z "$HAVE_GOOGLETEST_TRUE" ]]; then
 AC_CONFIG_SUBDIRS([googletest])
 fi
 
+AC_ARG_WITH([libtorch],
+  AS_HELP_STRING([--with-libtorch], [Path to LibTorch installation directory]))
+if test "x$with_libtorch" != "xno"; then
+  AC_MSG_CHECKING([for LibTorch])
+  if test -f "$with_libtorch/lib/libtorch.so"; then
+    AC_MSG_RESULT([yes])
+    LDFLAGS="$LDFLAGS -Wl,-rpath,$with_libtorch/lib"
+    CPPFLAGS="$CPPFLAGS -I$with_libtorch/include"
+  else
+    AC_MSG_ERROR([LibTorch not found in the specified directory])
+  fi
+else
+  AC_MSG_ERROR([LibTorch is required. Use --with-libtorch option to specify its location.])
+fi
+
+
+
 AC_CONFIG_FILES([Makefile
                  ipfixprobe.spec
                  ipfixprobe.bash
