@@ -33,11 +33,13 @@
 
 namespace ipxp {
 
+#define MIN(a, b) (((a) < (b)) ? (a) : (b))
+
 int neuronRecord::REGISTERED_ID = -1;
 
 __attribute__((constructor)) static void register_this_plugin()
 {
-   static PluginRecord rec = PluginRecord("neuron_plugin", [](){return new NEURON_PLUGINPlugin();});
+   static PluginRecord rec = PluginRecord("neuron", [](){return new NEURON_PLUGINPlugin();});
    register_plugin(&rec);
    neuronRecord::REGISTERED_ID = register_extension();
 }
@@ -59,6 +61,15 @@ void NEURON_PLUGINPlugin::close()
 {
 }
 
+
+void NEURON_PLUGINPlugin::update_record(neuronRecord *data, const Packet &pkt)
+{
+   //zatim seru an smer
+   printf("incoming %d \n", pkt.packet_len);
+   data->packets[data->order].size = MIN(CONTENT_SIZE, pkt.payload_len); //watchout for overflow
+   memcpy(data->packets[data->order].data, pkt.payload, data->packets[data->order].size); //just copy first CONTENT_SIZE packets 
+}
+
 ProcessPlugin *NEURON_PLUGINPlugin::copy()
 {
    return new NEURON_PLUGINPlugin(*this);
@@ -71,7 +82,7 @@ int NEURON_PLUGINPlugin::pre_create(Packet &pkt)
 
 int NEURON_PLUGINPlugin::post_create(Flow &rec, const Packet &pkt)
 {
-   neuronRecord record = new neuronRecord(); //created new flow, can keep 30 packets from it
+   neuronRecord *record = new neuronRecord(); //created new flow, can keep 30 packets from it
 
    rec.add_extension(record); //register this flow
    update_record(record, pkt);
@@ -98,13 +109,16 @@ int NEURON_PLUGINPlugin::post_update(Flow &rec, const Packet &pkt)
 
 void NEURON_PLUGINPlugin::pre_export(Flow &rec)
 {
+   printf("neco prislo\n");
+   neuronRecord *data = static_cast<neuronRecord *>(rec.get_extension(neuronRecord::REGISTERED_ID));
+   for (size_t i = 0; i < BUFFER_COUNT; i++)
+   {
+      printf("size: %d", data->packets[i].size);
+      /* code */
+   }
+   
+   
 }
 
-void NEURON_PLUGINPlugin::update_record(neuronRecord *data, const Packet &pkt)
-{
-   //zatim seru an smer
-   data->packets[data->order].size = MIN(CONTENT_SIZE, pkt.payload_len); //watchout for overflow
-   memcpy(data->packets[data->order], pkt.payload, data->packets[data->order]->size); //just copy first CONTENT_SIZE packets 
-}
 }
 

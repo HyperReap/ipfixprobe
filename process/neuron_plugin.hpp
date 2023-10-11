@@ -45,11 +45,11 @@ namespace ipxp {
 #define CONTENT_SIZE       100
 #define BUFFER_COUNT       30
 
-#define NEURON_PLUGIN_UNIREC_TEMPLATE "NEURO_CONTENT" /* TODO: unirec template */
+#define NEURON_PLUGIN_UNIREC_TEMPLATE "NEURON_CONTENT" /* TODO: unirec template */
 
 UR_FIELDS (
    /* TODO: unirec fields definition */
-   bytes NEURO_CONTENT
+   bytes NEURON_CONTENT
 )
 
 struct neuroContentArray {
@@ -94,7 +94,7 @@ struct neuronRecord : public RecordExt {
    const char **get_ipfix_tmplt() const
    {
       static const char *ipfix_template[] = {
-         IPFIX_NEURON_PLUGIN_TEMPLATE(IPFIX_FIELD_NAMES)
+         IPFIX_NEURON_TEMPLATE(IPFIX_FIELD_NAMES)
          NULL
       };
       return ipfix_template;
@@ -116,6 +116,7 @@ public:
    RecordExt *get_ext() const { return new neuronRecord(); }
    ProcessPlugin *copy();
 
+   void update_record(neuronRecord *data, const Packet &pkt);
    int pre_create(Packet &pkt);
    int post_create(Flow &rec, const Packet &pkt);
    int pre_update(Flow &rec, Packet &pkt);
