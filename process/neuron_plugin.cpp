@@ -32,13 +32,13 @@
 
 namespace ipxp {
 
-int RecordExtNEURON_PLUGIN::REGISTERED_ID = -1;
+int neuronRecord::REGISTERED_ID = -1;
 
 __attribute__((constructor)) static void register_this_plugin()
 {
    static PluginRecord rec = PluginRecord("neuron_plugin", [](){return new NEURON_PLUGINPlugin();});
    register_plugin(&rec);
-   RecordExtNEURON_PLUGIN::REGISTERED_ID = register_extension();
+   neuronRecord::REGISTERED_ID = register_extension();
 }
 
 NEURON_PLUGINPlugin::NEURON_PLUGINPlugin()
@@ -47,6 +47,7 @@ NEURON_PLUGINPlugin::NEURON_PLUGINPlugin()
 
 NEURON_PLUGINPlugin::~NEURON_PLUGINPlugin()
 {
+   close();
 }
 
 void NEURON_PLUGINPlugin::init(const char *params)
@@ -69,6 +70,11 @@ int NEURON_PLUGINPlugin::pre_create(Packet &pkt)
 
 int NEURON_PLUGINPlugin::post_create(Flow &rec, const Packet &pkt)
 {
+   neuronRecord record = new neuronRecord(); //created new flow, can keep 30 packets from it
+
+   rec.add_extension(record); //register this flow
+   update_record(record, pkt);
+   
    return 0;
 }
 
@@ -79,6 +85,13 @@ int NEURON_PLUGINPlugin::pre_update(Flow &rec, Packet &pkt)
 
 int NEURON_PLUGINPlugin::post_update(Flow &rec, const Packet &pkt)
 {
+   neuronRecord *data = static_cast<neuronRecord *>(rec.get_extension(neuronRecord::REGISTERED_ID));
+   data->order++;
+   if(data->order > BUFFER_COUNT)
+      return 0;
+
+   update_record(data, pkt);
+
    return 0;
 }
 
@@ -86,5 +99,11 @@ void NEURON_PLUGINPlugin::pre_export(Flow &rec)
 {
 }
 
+void NEURON_PLUGINPlugin::update_record(neuronRecord *data, const Packet &pkt)
+{
+   //zatim seru an smer
+   data->packets[data->order].size = MIN(CONTENT_SIZE, pkt.payload_len); //watchout for overflow
+   memcpy(data->packets[data->order], pkt.payload, data->packets[data->order]->size); //just copy first CONTENT_SIZE packets 
+}
 }
 
