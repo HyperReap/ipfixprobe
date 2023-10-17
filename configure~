@@ -20021,9 +20021,8 @@ printf %s "checking for LibTorch... " >&6; }
   if test -f "$with_libtorch/lib/libtorch.so"; then
     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-    LDFLAGS="$LDFLAGS $(with_libtorch)/lib/libtorch.so"
-    CPPFLAGS="$CPPFLAGS  -I $with_libtorch/include -I $with_libtorch/include/torch/csrc/api/include   -I thirdparty -I thirdparty/tomlc99  "
-    LIBS="$LIBS -Wl,-rpath,$with_libtorch/lib -Wl,--no-as-needed,"$with_libtorch/lib/libtorch_cpu.so"  -Wl,--no-as-needed,"$with_libtorch/lib/libtorch.so"  -Wl,--as-needed $with_libtorch/lib/libc10.so"
+    CPPFLAGS="$CPPFLAGS  -I $with_libtorch/include -I $with_libtorch/include/torch/csrc/api/include    -I thirdparty -I thirdparty/tomlc99   "
+    LIBS="$LIBS -Wl,-rpath,$with_libtorch/lib -Wl,--no-as-needed,"$with_libtorch/lib/libtorch_cpu.so"  -Wl,--no-as-needed,"$with_libtorch/lib/libtorch.so"  -Wl,--as-needed $with_libtorch/lib/libc10.so" -Wl,--as-needed $with_libtorch/lib/libc10.so"
   else
     as_fn_error $? "LibTorch not found in the specified directory" "$LINENO" 5
   fi
