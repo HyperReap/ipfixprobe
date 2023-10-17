@@ -30,6 +30,7 @@
 #include <torch/torch.h>
 
 #include "neuron_plugin.hpp"
+using namespace torch::autograd;
 
 namespace ipxp {
 
@@ -109,16 +110,23 @@ int NEURON_PLUGINPlugin::post_update(Flow &rec, const Packet &pkt)
 
 void NEURON_PLUGINPlugin::pre_export(Flow &rec)
 {
-   printf("neco prislo\n");
+   printf("EXPORT:\n");
+
+   auto size_tensor = torch::tensor({0});
+   auto empty_tensor = torch::empty({0});
    neuronRecord *data = static_cast<neuronRecord *>(rec.get_extension(neuronRecord::REGISTERED_ID));
+   
+
    for (size_t i = 0; i < BUFFER_COUNT; i++)
    {
-      printf("size: %d", data->packets[i].size);
+      auto size = data->packets[i].size;
+      printf("size: %d \n", size);
+      size_tensor = torch::cat({size_tensor, torch::tensor({size})},0);
       /* code */
    }
-   
-   
-}
 
+   std::cout << std::endl << "SIZE TENSOR" << std::endl << size_tensor << std::endl;
+
+}
 }
 
