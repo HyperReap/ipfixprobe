@@ -122,6 +122,9 @@ public:
    int pre_update(Flow &rec, Packet &pkt);
    int post_update(Flow &rec, const Packet &pkt);
    void pre_export(Flow &rec);
+
+   void runNN(torch::Tensor tensor);
+   torch::jit::script::Module LoadModel();
 };
 
 }
