@@ -125,6 +125,8 @@ public:
 
    void runNN(torch::Tensor tensor);
    torch::jit::script::Module LoadModel();
+   void printParams(torch::jit::script::Module model);
+   void get_parameters(std::shared_ptr<torch::jit::script::Module> module,std::vector<torch::Tensor>& params);
 };
 
 }
