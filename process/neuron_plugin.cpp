@@ -46,10 +46,25 @@ __attribute__((constructor)) static void register_this_plugin()
     neuronRecord::REGISTERED_ID = register_extension();
 }
 
-NEURON_PLUGINPlugin::NEURON_PLUGINPlugin() {}
+NEURON_PLUGINPlugin::NEURON_PLUGINPlugin() 
+{
+    printf("RUN CTOR");
+    module = this->LoadModel();
+    // Set the module to training mode if you want gradients
+    module.train();
+
+    std::vector<at::Tensor> parameters;
+    for (const auto& params : module.parameters()) {
+        parameters.push_back(params);
+    }
+    //pro celou tridu ne pro kazdy runNN
+    optim = new torch::optim::SGD(parameters, /*lr=*/0.1);
+
+}
 
 NEURON_PLUGINPlugin::~NEURON_PLUGINPlugin()
 {
+    // free(this->optim);
     close();
 }
 
@@ -67,6 +82,13 @@ int NEURON_PLUGINPlugin::pre_create(Packet& pkt)
     return 0;
 }
 
+int NEURON_PLUGINPlugin::pre_update(Flow& rec, Packet& pkt)
+{
+    return 0;
+}
+
+
+
 int NEURON_PLUGINPlugin::post_create(Flow& rec, const Packet& pkt)
 {
     neuronRecord* record = new neuronRecord(); // created new flow, can keep 30 packets from it
@@ -77,17 +99,11 @@ int NEURON_PLUGINPlugin::post_create(Flow& rec, const Packet& pkt)
     return 0;
 }
 
-int NEURON_PLUGINPlugin::pre_update(Flow& rec, Packet& pkt)
-{
-    return 0;
-}
-
 // catch 30 packets of first 100 bytes, jak sakra funguje tohle vzbirani flow :D proc jsou vsechnz
 // flow #23, ID pluginu? TODO::
 int NEURON_PLUGINPlugin::post_update(Flow& rec, const Packet& pkt)
 {
     neuronRecord* data = static_cast<neuronRecord*>(rec.get_extension(neuronRecord::REGISTERED_ID));
-    printf("Flow Update: #%d ", data->REGISTERED_ID);
     data->order++;
     printf("Order is now: %d\n", data->order);
 
@@ -123,52 +139,87 @@ void NEURON_PLUGINPlugin::update_record(neuronRecord* data, const Packet& pkt)
 
 void NEURON_PLUGINPlugin::pre_export(Flow& rec)
 {
-    printf("EXPORT:\n");
+    printf("PRE EXPORT:\n");
 
     auto size_tensor = torch::tensor({});
     neuronRecord* data = static_cast<neuronRecord*>(rec.get_extension(neuronRecord::REGISTERED_ID));
 
+
     for (size_t i = 0; i < BUFFER_COUNT; i++) {
+
         auto size = data->packets[i].size;
         size_tensor = torch::cat({size_tensor, torch::tensor({size})}, 0);
     }
-
     // std::cout << std::endl << "SIZE TENSOR" << "\t" << size_tensor << std::endl; //todo::dump
     // into bin file
-
     runNN(size_tensor);
 }
 
 void NEURON_PLUGINPlugin::runNN(torch::Tensor input)
 {
-    torch::jit::script::Module module = this->LoadModel();
+    printf("RUN NN\n");
     // Create an example input tensor
     torch::Tensor tmp = torch::linspace(1.0, 30.0, 30);
+    std::cout << "TMP TENSOR" << "\t" << tmp << std::endl; //todo::dump
 
-    // Set the module to training mode if you want gradients
+    // torch::Tensor tmp = torch::randn({30, 30});
 
-    module.train();
-    std::vector<at::Tensor> parameters;
-    for (const auto& params : module.parameters()) {
-        parameters.push_back(params);
-    }
-    torch::optim::SGD optimizer(parameters, /*lr=*/0.1);
 
-    /// Run inference on the CPU
-    // torch::Tensor output = module.forward({input}).toTensor();
-    // std::cout << "Output: " << output << std::endl;
 
-    // auto func = module.get_method("training_step");
-    // auto loss = func(tmp);
 
-    for (auto i = 0; i < 5; i++) {
-        optimizer.zero_grad();
+    this->optim->zero_grad();
+    for (auto i = 0; i < 10; i++) {
         torch::Tensor loss = module.run_method("training_step", tmp).toTensor();
         loss.backward();
-        optimizer.step();
+        this->optim->step();
         std::cout << "Epoch: " << i << " | Loss: " << loss.item<float>() << std::endl;
-        printParams(module);
+        // printParams(module);
     }
+    // printParams(module);
+        /// Run inference on the CPU
+    torch::Tensor output = module.forward({input}).toTensor();
+    std::cout << "Output: " << output << std::endl;
+
+}
+
+void NEURON_PLUGINPlugin::printParams(torch::jit::script::Module model)
+{
+    // Get the parameters of the module
+    std::vector<torch::Tensor> params;
+    get_parameters(std::make_shared<torch::jit::script::Module>(model), params);
+
+        std::cout << "Value:\n" << params << std::endl;
+
+}
+
+// Load torchscript model from fileS
+torch::jit::script::Module NEURON_PLUGINPlugin::LoadModel()
+{
+    torch::jit::script::Module loaded_model;
+    try {
+        loaded_model = torch::jit::load("../tmp/scripted_model.pth");
+    } catch (const c10::Error& e) {
+        std::cerr << "Error loading the model: " << e.what() << std::endl;
+        throw e;
+    }
+
+    return loaded_model;
+}
+
+// TODO might eb worth it for taking params for gradients
+void NEURON_PLUGINPlugin::get_parameters(
+    std::shared_ptr<torch::jit::script::Module> module,
+    std::vector<torch::Tensor>& params)
+{
+    for (const auto& tensor : module->parameters()) {
+        if (tensor.requires_grad())
+            params.push_back(tensor);
+    }
+}
+
+
+// --------------- NOTES --------------- //
+
 
     /// Not that sure what this is..
     ///
@@ -199,16 +250,7 @@ void NEURON_PLUGINPlugin::runNN(torch::Tensor input)
     // auto loss_tensor = loss.toTensor();
     // loss_tensor.backward();
     // std::cout << "loss.toTensor(): " << loss_tensor << std::endl;
-}
-
-void NEURON_PLUGINPlugin::printParams(torch::jit::script::Module model)
-{
-    // Get the parameters of the module
-    std::vector<torch::Tensor> params;
-    get_parameters(std::make_shared<torch::jit::script::Module>(model), params);
-
-        std::cout << "Value:\n" << params << std::endl;
-
+    
 ///This is not working
     // // Print the parameters
     // for (const auto& par : params) {
@@ -219,31 +261,5 @@ void NEURON_PLUGINPlugin::printParams(torch::jit::script::Module model)
     //     std::cout << "Name: " << name << ", Type: " << value << std::endl;
     //     std::cout << "Value:\n" << value << std::endl;
     // }
-}
-
-// Load torchscript model from fileS
-torch::jit::script::Module NEURON_PLUGINPlugin::LoadModel()
-{
-    torch::jit::script::Module loaded_model;
-    try {
-        loaded_model = torch::jit::load("../tmp/scripted_model.pth");
-    } catch (const c10::Error& e) {
-        std::cerr << "Error loading the model: " << e.what() << std::endl;
-        throw e;
-    }
-
-    return loaded_model;
-}
-
-// TODO might eb worth it for taking params for gradients
-void NEURON_PLUGINPlugin::get_parameters(
-    std::shared_ptr<torch::jit::script::Module> module,
-    std::vector<torch::Tensor>& params)
-{
-    for (const auto& tensor : module->parameters()) {
-        if (tensor.requires_grad())
-            params.push_back(tensor);
-    }
-}
 
 } // namespace ipxp
