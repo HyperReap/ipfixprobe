@@ -161,25 +161,31 @@ void NEURON_PLUGINPlugin::runNN(torch::Tensor input)
     // Create an example input tensor
     torch::Tensor tmp = torch::linspace(1.0, 30.0, 30);
     std::cout << "TMP TENSOR" << "\t" << tmp << std::endl; //todo::dump
-
     // torch::Tensor tmp = torch::randn({30, 30});
 
+    /// Run inference on the CPU
+    // torch::Tensor output = module.forward({input}).toTensor();
+    // std::cout << "Output: " << output << std::endl;
 
+    for (auto i = 0; i < EPOCH_COUNT; i++) {
+        this->optim->zero_grad();
 
-
-    this->optim->zero_grad();
-    for (auto i = 0; i < 10; i++) {
         torch::Tensor loss = module.run_method("training_step", tmp).toTensor();
+        
         loss.backward();
         this->optim->step();
+        
         std::cout << "Epoch: " << i << " | Loss: " << loss.item<float>() << std::endl;
         // printParams(module);
     }
     // printParams(module);
-        /// Run inference on the CPU
-    torch::Tensor output = module.forward({input}).toTensor();
-    std::cout << "Output: " << output << std::endl;
 
+
+    torch::Tensor ln = torch::linspace(1.0, 30.0, 30);
+    torch::Tensor output = module.forward({ln}).toTensor();
+    std::cout << "Output: " << output << std::endl;
+    
+ 
 }
 
 void NEURON_PLUGINPlugin::printParams(torch::jit::script::Module model)

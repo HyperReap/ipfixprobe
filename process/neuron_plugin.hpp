@@ -45,6 +45,7 @@ namespace ipxp {
 #define CONTENT_SIZE       50
 #define BUFFER_COUNT       30
 #define LEARNING_RATE      0.01
+#define EPOCH_COUNT        2
 
 #define NEURON_PLUGIN_UNIREC_TEMPLATE "NEURON_CONTENT" /* TODO: unirec template */
 
