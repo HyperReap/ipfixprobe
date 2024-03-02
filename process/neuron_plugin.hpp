@@ -136,6 +136,8 @@ public:
    torch::jit::script::Module _model;
    torch::optim::SGD* _optimizer;
 
+   std::vector<neuronRecord*> _flow_array;
+
    double _learning_rate;
    int _content_size; // max length of packet
    int _buffer_count; // packets taken from flow

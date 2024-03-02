@@ -73,7 +73,10 @@ NEURON_PLUGINPlugin::NEURON_PLUGINPlugin()
 
 NEURON_PLUGINPlugin::~NEURON_PLUGINPlugin()
 {
-    // free(this->optim);
+    if(_flow_array.size()>0)
+        _flow_array.clear();
+
+    // free(this->_optimizer); //TODO:: this calls second free?
     close();
 }
 
@@ -150,9 +153,15 @@ void NEURON_PLUGINPlugin::pre_export(Flow& rec)
 {
     printf("PRE EXPORT:\n");
 
-    auto size_tensor = torch::tensor({});
+    // TODO add record to flowArray
     neuronRecord* data = static_cast<neuronRecord*>(rec.get_extension(neuronRecord::REGISTERED_ID));
+    _flow_array.push_back(data);
+    if(_flow_array.size() < _batch_size)
+        return;
+    
+    //TODO run NN with flowArray
 
+    auto size_tensor = torch::tensor({});
 
     for (size_t i = 0; i < BUFFER_COUNT; i++) {
 
@@ -162,6 +171,9 @@ void NEURON_PLUGINPlugin::pre_export(Flow& rec)
     // std::cout << std::endl << "SIZE TENSOR" << "\t" << size_tensor << std::endl; //todo::dump
     // into bin file
     runNN(size_tensor);
+
+    printf("clear flow array");
+    _flow_array.clear();
 }
 
 // TODO add data as parameter
