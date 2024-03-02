@@ -42,10 +42,12 @@
 
 namespace ipxp {
 
-#define CONTENT_SIZE       50
-#define BUFFER_COUNT       30
-#define LEARNING_RATE      0.01
-#define EPOCH_COUNT        2
+#define LEARNING_RATE      0.1
+#define CONTENT_SIZE       50 //max length of packet
+#define BUFFER_COUNT       30 // packets taken from flow
+#define EPOCH_COUNT        2 // epoch for training
+#define EPOCH_SIZE         64 // flows in epoch
+#define BATCH_SIZE         16 // flows in batch
 
 #define NEURON_PLUGIN_UNIREC_TEMPLATE "NEURON_CONTENT" /* TODO: unirec template */
 
@@ -131,8 +133,15 @@ public:
    void get_parameters(std::shared_ptr<torch::jit::script::Module> module,std::vector<torch::Tensor>& params);
 
    private:
-   torch::jit::script::Module module;
-   torch::optim::SGD* optim;
+   torch::jit::script::Module _model;
+   torch::optim::SGD* _optimizer;
+
+   double _learning_rate;
+   int _content_size; // max length of packet
+   int _buffer_count; // packets taken from flow
+   int _epoch_count; // epoch for training
+   int _epoch_size; // flows in epoch
+   int _batch_size; // flows in batch
 
 };
 

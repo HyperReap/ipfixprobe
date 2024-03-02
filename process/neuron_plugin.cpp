@@ -49,16 +49,25 @@ __attribute__((constructor)) static void register_this_plugin()
 NEURON_PLUGINPlugin::NEURON_PLUGINPlugin() 
 {
     printf("RUN CTOR");
-    module = this->LoadModel();
+
+    _learning_rate = LEARNING_RATE;
+    _content_size = CONTENT_SIZE; // max length of packet
+    _buffer_count = BUFFER_COUNT; // packets taken from flow
+    _epoch_count = EPOCH_COUNT; // epoch for training
+    _epoch_size = EPOCH_SIZE; // flows in epoch
+    _batch_size = BATCH_SIZE; // flows in batch
+
+
+    this->_model = this->LoadModel();
     // Set the module to training mode if you want gradients
-    module.train();
+    this->_model.train();
 
     std::vector<at::Tensor> parameters;
-    for (const auto& params : module.parameters()) {
+    for (const auto& params : _model.parameters()) {
         parameters.push_back(params);
     }
-    //pro celou tridu ne pro kazdy runNN
-    optim = new torch::optim::SGD(parameters, /*lr=*/0.1);
+
+    this->_optimizer = new torch::optim::SGD(parameters, _learning_rate);
 
 }
 
@@ -155,34 +164,30 @@ void NEURON_PLUGINPlugin::pre_export(Flow& rec)
     runNN(size_tensor);
 }
 
+// TODO add data as parameter
+    //to count number of epochs
 void NEURON_PLUGINPlugin::runNN(torch::Tensor input)
 {
     printf("RUN NN\n");
-    // Create an example input tensor
-    torch::Tensor tmp = torch::linspace(1.0, 30.0, 30);
-    std::cout << "TMP TENSOR" << "\t" << tmp << std::endl; //todo::dump
-    // torch::Tensor tmp = torch::randn({30, 30});
 
-    /// Run inference on the CPU
-    // torch::Tensor output = module.forward({input}).toTensor();
-    // std::cout << "Output: " << output << std::endl;
+    for (auto i = 0; i < 50; i++) {
+    printf("iteration\n");
 
-    for (auto i = 0; i < EPOCH_COUNT; i++) {
-        this->optim->zero_grad();
+        this->_optimizer->zero_grad();
+        torch::Tensor tmp = torch::randn({30, 30});
 
-        torch::Tensor loss = module.run_method("training_step", tmp).toTensor();
+        torch::Tensor loss = this->_model.run_method("training_step", tmp).toTensor();
         
         loss.backward();
-        this->optim->step();
+        this->_optimizer->step();
         
         std::cout << "Epoch: " << i << " | Loss: " << loss.item<float>() << std::endl;
-        // printParams(module);
+        // printParams(_model);
     }
-    // printParams(module);
 
 
     torch::Tensor ln = torch::linspace(1.0, 30.0, 30);
-    torch::Tensor output = module.forward({ln}).toTensor();
+    torch::Tensor output = _model.forward({ln}).toTensor();
     std::cout << "Output: " << output << std::endl;
     
  
@@ -203,7 +208,7 @@ torch::jit::script::Module NEURON_PLUGINPlugin::LoadModel()
 {
     torch::jit::script::Module loaded_model;
     try {
-        loaded_model = torch::jit::load("../tmp/scripted_model.pth");
+        loaded_model = torch::jit::load("../models/scripted_model.pth");
     } catch (const c10::Error& e) {
         std::cerr << "Error loading the model: " << e.what() << std::endl;
         throw e;
