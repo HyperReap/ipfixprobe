@@ -51,11 +51,14 @@ NEURON_PLUGINPlugin::NEURON_PLUGINPlugin()
     printf("RUN CTOR");
 
     _learning_rate = LEARNING_RATE;
-    _content_size = CONTENT_SIZE; // max length of packet
-    _buffer_count = BUFFER_COUNT; // packets taken from flow
-    _epoch_count = EPOCH_COUNT; // epoch for training
-    _epoch_size = EPOCH_SIZE; // flows in epoch
-    _batch_size = BATCH_SIZE; // flows in batch
+    _content_size = CONTENT_SIZE;           // max length of packet
+    _buffer_count = BUFFER_COUNT;           // packets taken from flow
+    _batch_size = BATCH_SIZE;               // flows in batch
+    _epoch_count_limit = EPOCH_COUNT_LIMIT; // epoch for training
+    _epoch_size_limit = EPOCH_SIZE_LIMIT;   // flows in epoch
+
+    _epoch_count = 0;       
+    _epoch_size = 0; 
 
 
     this->_model = this->LoadModel();
@@ -152,29 +155,77 @@ void NEURON_PLUGINPlugin::update_record(neuronRecord* data, const Packet& pkt)
 void NEURON_PLUGINPlugin::pre_export(Flow& rec)
 {
     printf("PRE EXPORT:\n");
+    if(this->_epoch_count > this->_epoch_count_limit) 
+        return; //one more than limit, no need tot rain anymore
 
-    // TODO add record to flowArray
+    // add record to flowArray
     neuronRecord* data = static_cast<neuronRecord*>(rec.get_extension(neuronRecord::REGISTERED_ID));
     _flow_array.push_back(data);
+
+    // check if there is enough flows in batch
     if(_flow_array.size() < _batch_size)
+    {
+        std::cout << "Not enough flows. Current Count: " << _flow_array.size() << std::endl;
         return;
-    
-    //TODO run NN with flowArray
-
-    auto size_tensor = torch::tensor({});
-
-    for (size_t i = 0; i < BUFFER_COUNT; i++) {
-
-        auto size = data->packets[i].size;
-        size_tensor = torch::cat({size_tensor, torch::tensor({size})}, 0);
     }
-    // std::cout << std::endl << "SIZE TENSOR" << "\t" << size_tensor << std::endl; //todo::dump
-    // into bin file
-    runNN(size_tensor);
+
+    this->_epoch_size += this->_flow_array.size();
+
+    nn_training();
+
 
     printf("clear flow array");
-    _flow_array.clear();
+    this->_flow_array.clear();
+
+    if(this->_epoch_count >= this->_epoch_size_limit){
+        this->_epoch_count = 0;
+        this->_epoch_count++;
+    }
+
+    // auto size_tensor = torch::tensor({});
+
+    // for (size_t i = 0; i < BUFFER_COUNT; i++) {
+
+    //     auto size = data->packets[i].size;
+    //     size_tensor = torch::cat({size_tensor, torch::tensor({size})}, 0);
+    // }
+    // // std::cout << std::endl << "SIZE TENSOR" << "\t" << size_tensor << std::endl; //todo::dump
+    // // into bin file
+    // runNN(size_tensor);
 }
+
+void NEURON_PLUGINPlugin::nn_training()
+{
+    for (auto record : this->_flow_array)
+    {
+        int iteration = 0;
+        auto size_tensor = torch::tensor({});
+        for (size_t i = 0; i < BUFFER_COUNT; i++) 
+        {
+            auto size = record->packets[i].size;
+            size_tensor = torch::cat({size_tensor, torch::tensor({size})}, 0);
+        }
+
+
+        torch::Tensor tmp = torch::randn({30, 30});
+        this->_optimizer->zero_grad();
+        torch::Tensor loss = this->_model.run_method("training_step", tmp).toTensor();
+
+        loss.backward();
+        this->_optimizer->step();
+        
+        std::cout << "Epoch: " << this->_epoch_count << " | iteration: " << iteration << " | Loss: " << loss.item<float>() << std::endl;
+    }
+}
+
+void NEURON_PLUGINPlugin::nn_inference()
+{
+    torch::Tensor tmp = torch::randn({30, 30});
+    auto output = this->_model.forward({tmp}).toTensor();
+
+    return;
+}
+
 
 // TODO add data as parameter
     //to count number of epochs
