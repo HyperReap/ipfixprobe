@@ -42,11 +42,11 @@
 
 namespace ipxp {
 
-#define LEARNING_RATE      0.1
-#define CONTENT_SIZE       50 //max length of packet
+#define LEARNING_RATE      0.01
+#define CONTENT_SIZE       1000 //max length of packet
 #define BUFFER_COUNT       30 // packets taken from flow
-#define EPOCH_COUNT_LIMIT  2 // epoch for training
-#define EPOCH_SIZE_LIMIT   64 // flows in epoch
+#define EPOCH_COUNT_LIMIT  1 // epoch for training
+#define EPOCH_SIZE_LIMIT   32 // flows in epoch
 #define BATCH_SIZE         16 // flows in batch
 
 #define NEURON_PLUGIN_UNIREC_TEMPLATE "NEURON_CONTENT" /* TODO: unirec template */

@@ -142,21 +142,30 @@ void NEURON_PLUGINPlugin::update_record(neuronRecord* data, const Packet& pkt)
     //  data->packets[data->order].size = MIN(CONTENT_SIZE, pkt.payload_len); // watchout for
     ///  overflow
     data->packets[data->order].size
-        = pkt.payload_len < CONTENT_SIZE ? pkt.payload_len : CONTENT_SIZE;
+        = pkt.packet_len_wire < CONTENT_SIZE ? pkt.packet_len_wire : CONTENT_SIZE;
     // printf("size saved on order %d = %d \n", data->order, data->packets[data->order].size);
-    printf("\n");
+    printf("packet len wire: %d\n", pkt.packet_len_wire);
 
-    memcpy(
-        data->packets[data->order].data,
-        pkt.payload,
-        data->packets[data->order].size); // just copy first CONTENT_SIZE packets
+    // memcpy(
+    //     data->packets[data->order].data,
+    //     pkt.packet,
+    //     data->packets[data->order].size); // just copy first CONTENT_SIZE packets
 }
 
 void NEURON_PLUGINPlugin::pre_export(Flow& rec)
 {
     printf("PRE EXPORT:\n");
     if(this->_epoch_count > this->_epoch_count_limit) 
-        return; //one more than limit, no need tot rain anymore
+    {
+        printf("End of EPOCHS - Save Model\n");
+        //https://discuss.pytorch.org/t/saving-and-loading-model-with-libtorch-c/184482
+        std::vector<torch::Tensor> params;
+        get_parameters(std::make_shared<torch::jit::script::Module>(_model), params);
+         // Save the tensor to a file
+        torch::save(params, "../models/params.pt");
+
+        exit(1);
+    }
 
     // add record to flowArray
     neuronRecord* data = static_cast<neuronRecord*>(rec.get_extension(neuronRecord::REGISTERED_ID));
@@ -174,11 +183,12 @@ void NEURON_PLUGINPlugin::pre_export(Flow& rec)
     nn_training();
 
 
-    printf("clear flow array");
+    printf("clear flow array\n");
     this->_flow_array.clear();
 
-    if(this->_epoch_count >= this->_epoch_size_limit){
-        this->_epoch_count = 0;
+    if(this->_epoch_count <= this->_epoch_count_limit)
+    {
+        this->_epoch_size = 0;
         this->_epoch_count++;
     }
 
@@ -196,32 +206,49 @@ void NEURON_PLUGINPlugin::pre_export(Flow& rec)
 
 void NEURON_PLUGINPlugin::nn_training()
 {
+    int iteration = 0;
     for (auto record : this->_flow_array)
     {
-        int iteration = 0;
         auto size_tensor = torch::tensor({});
+        std::cout << "pktLens: ";
         for (size_t i = 0; i < BUFFER_COUNT; i++) 
         {
-            auto size = record->packets[i].size;
+            int size = record->packets[i].size;
             size_tensor = torch::cat({size_tensor, torch::tensor({size})}, 0);
+            std::cout << size << ", ";
         }
+        std::cout << std::endl;
 
 
-        torch::Tensor tmp = torch::randn({30, 30});
+        // torch::Tensor tmp = torch::randn({30, 30});
         this->_optimizer->zero_grad();
-        torch::Tensor loss = this->_model.run_method("training_step", tmp).toTensor();
+        torch::Tensor loss = this->_model.run_method("training_step", size_tensor).toTensor();
 
         loss.backward();
         this->_optimizer->step();
         
         std::cout << "Epoch: " << this->_epoch_count << " | iteration: " << iteration << " | Loss: " << loss.item<float>() << std::endl;
+        iteration++;
     }
 }
 
 void NEURON_PLUGINPlugin::nn_inference()
 {
+    // Load the saved tensor back
+    torch::Tensor loaded_params;
+    torch::load(loaded_params, "../models/params.pt");
+
+    std::vector<torch::Tensor> params;
+    get_parameters(std::make_shared<torch::jit::script::Module>(_model), params);
+
+     // Load the trained parameters into the loaded model
+    for (size_t i = 0; i < params.size(); ++i) {
+        params[i].set_data(loaded_params[i]);
+    }
+
+    printf("run inference on saved model\n");
     torch::Tensor tmp = torch::randn({30, 30});
-    auto output = this->_model.forward({tmp}).toTensor();
+    auto output = _model.forward({tmp}).toTensor();
 
     return;
 }
@@ -279,6 +306,16 @@ torch::jit::script::Module NEURON_PLUGINPlugin::LoadModel()
 
     return loaded_model;
 }
+
+//  https://discuss.pytorch.org/t/libtorch-save-mnist-c-examples-trained-model-into-a-file-and-load-in-from-another-c-file-to-use-for-prediction/51681/11
+// These are scenarios that C++/TorchScript serialization doesn’t support:
+//      Save as C++ model using torch::save, load using torch::jit::load in C++
+//      Save as C++ model using torch::save, load using torch.load in Python
+//      Save as C++ model using torch::save, load using torch.jit.load in Python
+
+// As such trying to save models parameters and load them into model
+
+
 
 // TODO might eb worth it for taking params for gradients
 void NEURON_PLUGINPlugin::get_parameters(
