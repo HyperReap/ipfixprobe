@@ -57,7 +57,7 @@ UR_FIELDS (
 )
 
 struct neuroContentArray {
-   neuroContentArray() : size(0){ };
+   neuroContentArray() : size(0.0){ };
    float size;
    uint8_t data[CONTENT_SIZE];
 };

@@ -227,7 +227,9 @@ void NEURON_PLUGINPlugin::nn_training()
             float size = record->packets[i].size; /// todo into float
             // if(size <= 0)
             //     size = 99;
-            packet_lengths_tensor[i] = (size);
+            packet_lengths_tensor[i] = torch::rand({}).item<float>();
+            // packet_lengths_tensor[i] = (size);
+
         }
 
         concatenated_tensor[batch_count_in_epoch] = packet_lengths_tensor;
@@ -236,12 +238,15 @@ void NEURON_PLUGINPlugin::nn_training()
         batch_count_in_epoch++;
     }
         
-        std::cout<<"batch tensor: "<<concatenated_tensor<<std::endl;
+        torch::Tensor tmp = torch::rand({_batch_size, _buffer_count});
+        torch::Tensor tmp2 = tmp * (200 - 0) + 0;
 
-        // torch::Tensor tmp = torch::randn({_batch_size, _buffer_count});
+        std::cout<<"batch tensor: "<<concatenated_tensor<<std::endl;
+        std::cout<<"tmp tensor: "<<tmp<<std::endl <<std::endl;
+
 
         this->_optimizer->zero_grad();
-        torch::Tensor loss = this->_model.run_method("training_step", concatenated_tensor).toTensor();
+        torch::Tensor loss = this->_model.run_method("training_step", tmp).toTensor();
 
         loss.backward();
         this->_optimizer->step();
@@ -283,7 +288,6 @@ void NEURON_PLUGINPlugin::runNN(torch::Tensor input)
     printf("RUN NN\n");
 
     for (auto i = 0; i < 50; i++) {
-    printf("batch_count_in_epoch\n");
 
         this->_optimizer->zero_grad();
         torch::Tensor tmp = torch::randn({30, 30});
