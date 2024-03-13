@@ -99,6 +99,8 @@ int NEURON_PLUGINPlugin::pre_create(Packet& pkt)
 
 int NEURON_PLUGINPlugin::pre_update(Flow& rec, Packet& pkt)
 {
+    // std::cout<<"inference"<<std::endl;
+    // nn_inference();
     return 0;
 }
 
@@ -108,23 +110,19 @@ int NEURON_PLUGINPlugin::post_create(Flow& rec, const Packet& pkt)
 {
     neuronRecord* record = new neuronRecord(); // created new flow, can keep 30 packets from it
     rec.add_extension(record); // register this flow
-    printf("Flow Create: #%d \n", record->REGISTERED_ID);
     update_record(record, pkt);
 
     return 0;
 }
 
 // catch 30 packets of first 100 bytes, jak sakra funguje tohle vzbirani flow :D proc jsou vsechnz
-// flow #23, ID pluginu? TODO::
 int NEURON_PLUGINPlugin::post_update(Flow& rec, const Packet& pkt)
 {
     neuronRecord* data = static_cast<neuronRecord*>(rec.get_extension(neuronRecord::REGISTERED_ID));
     data->order++;
-    printf("Order is now: %d\n", data->order);
 
-    printf("\n");
     if (data->order > BUFFER_COUNT) {
-        printf("Too many packets in this flow > %d\n", BUFFER_COUNT);
+        // printf("Too many packets in this flow > %d\n", BUFFER_COUNT);
         return 0;
     }
 
@@ -141,10 +139,16 @@ void NEURON_PLUGINPlugin::update_record(neuronRecord* data, const Packet& pkt)
 
     //  data->packets[data->order].size = MIN(CONTENT_SIZE, pkt.payload_len); // watchout for
     ///  overflow
-    data->packets[data->order].size
-        = pkt.packet_len_wire < CONTENT_SIZE ? pkt.packet_len_wire : CONTENT_SIZE;
-    // printf("size saved on order %d = %d \n", data->order, data->packets[data->order].size);
-    printf("packet len wire: %d\n", pkt.packet_len_wire);
+    if (pkt.packet_len_wire < CONTENT_SIZE)
+    {
+        data->packets[data->order].size = pkt.packet_len_wire;
+    }
+    else 
+    {
+        data->packets[data->order].size = CONTENT_SIZE;
+    }
+
+    // std::cout<< "order :" << (int)data->order << " | packet len wire: " << pkt.packet_len_wire << std::endl;
 
     // memcpy(
     //     data->packets[data->order].data,
@@ -154,7 +158,7 @@ void NEURON_PLUGINPlugin::update_record(neuronRecord* data, const Packet& pkt)
 
 void NEURON_PLUGINPlugin::pre_export(Flow& rec)
 {
-    printf("PRE EXPORT:\n");
+    // printf("PRE EXPORT:\n");
     if(this->_epoch_count > this->_epoch_count_limit) 
     {
         printf("End of EPOCHS - Save Model\n");
@@ -163,6 +167,8 @@ void NEURON_PLUGINPlugin::pre_export(Flow& rec)
         get_parameters(std::make_shared<torch::jit::script::Module>(_model), params);
          // Save the tensor to a file
         torch::save(params, "../models/params.pt");
+
+        printParams(_model);
 
         exit(1);
     }
@@ -174,19 +180,22 @@ void NEURON_PLUGINPlugin::pre_export(Flow& rec)
     // check if there is enough flows in batch
     if(_flow_array.size() < _batch_size)
     {
-        std::cout << "Not enough flows. Current Count: " << _flow_array.size() << std::endl;
+        // std::cout << "Not enough flows. Current Count: " << _flow_array.size() << std::endl;
         return;
     }
 
     this->_epoch_size += this->_flow_array.size();
 
+
+    // auto tmp = this->_model.state_dict();
+    std::cout<<"training- epochSize:"<< _epoch_size <<std::endl;
     nn_training();
 
 
     printf("clear flow array\n");
     this->_flow_array.clear();
 
-    if(this->_epoch_count <= this->_epoch_count_limit)
+    if(this->_epoch_size >= this->_epoch_size_limit)
     {
         this->_epoch_size = 0;
         this->_epoch_count++;
@@ -206,30 +215,41 @@ void NEURON_PLUGINPlugin::pre_export(Flow& rec)
 
 void NEURON_PLUGINPlugin::nn_training()
 {
-    int iteration = 0;
+    int batch_count_in_epoch = 0;
+    torch::Tensor concatenated_tensor = torch::empty({_batch_size, _buffer_count}, torch::kFloat32);
+
     for (auto record : this->_flow_array)
     {
-        auto size_tensor = torch::tensor({});
-        std::cout << "pktLens: ";
+        torch::Tensor packet_lengths_tensor = torch::empty({_buffer_count}, torch::kFloat32);
+
         for (size_t i = 0; i < BUFFER_COUNT; i++) 
         {
-            int size = record->packets[i].size;
-            size_tensor = torch::cat({size_tensor, torch::tensor({size})}, 0);
-            std::cout << size << ", ";
+            float size = record->packets[i].size; /// todo into float
+            // if(size <= 0)
+            //     size = 99;
+            packet_lengths_tensor[i] = (size);
         }
-        std::cout << std::endl;
+
+        concatenated_tensor[batch_count_in_epoch] = packet_lengths_tensor;
 
 
-        // torch::Tensor tmp = torch::randn({30, 30});
+        batch_count_in_epoch++;
+    }
+        
+        std::cout<<"batch tensor: "<<concatenated_tensor<<std::endl;
+
+        // torch::Tensor tmp = torch::randn({_batch_size, _buffer_count});
+
         this->_optimizer->zero_grad();
-        torch::Tensor loss = this->_model.run_method("training_step", size_tensor).toTensor();
+        torch::Tensor loss = this->_model.run_method("training_step", concatenated_tensor).toTensor();
 
         loss.backward();
         this->_optimizer->step();
         
-        std::cout << "Epoch: " << this->_epoch_count << " | iteration: " << iteration << " | Loss: " << loss.item<float>() << std::endl;
-        iteration++;
-    }
+        // std::cout << "Epoch: " << this->_epoch_count << " | batch_count_in_epoch: " << batch_count_in_epoch << " | Loss: " << loss.item<float>() << std::endl;
+        std::cout << "Epoch: " << this->_epoch_count << " | Loss: " << loss.item<float>() << std::endl;
+
+
 }
 
 void NEURON_PLUGINPlugin::nn_inference()
@@ -237,14 +257,16 @@ void NEURON_PLUGINPlugin::nn_inference()
     // Load the saved tensor back
     torch::Tensor loaded_params;
     torch::load(loaded_params, "../models/params.pt");
+    //TODO load as ordered dict, same way as get_params work.
 
-    std::vector<torch::Tensor> params;
-    get_parameters(std::make_shared<torch::jit::script::Module>(_model), params);
+    // _model.load_state_dict(loaded_params);
+    // std::vector<torch::Tensor> params;
+    // get_parameters(std::make_shared<torch::jit::script::Module>(_model), params);
 
-     // Load the trained parameters into the loaded model
-    for (size_t i = 0; i < params.size(); ++i) {
-        params[i].set_data(loaded_params[i]);
-    }
+    //  // Load the trained parameters into the loaded model
+    // for (size_t i = 0; i < params.size(); ++i) {
+    //     params[i].set_data(loaded_params[i]);
+    // }
 
     printf("run inference on saved model\n");
     torch::Tensor tmp = torch::randn({30, 30});
@@ -261,7 +283,7 @@ void NEURON_PLUGINPlugin::runNN(torch::Tensor input)
     printf("RUN NN\n");
 
     for (auto i = 0; i < 50; i++) {
-    printf("iteration\n");
+    printf("batch_count_in_epoch\n");
 
         this->_optimizer->zero_grad();
         torch::Tensor tmp = torch::randn({30, 30});
