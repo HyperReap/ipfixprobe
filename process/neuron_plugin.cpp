@@ -227,8 +227,8 @@ void NEURON_PLUGINPlugin::nn_training()
             float size = record->packets[i].size; /// todo into float
             // if(size <= 0)
             //     size = 99;
-            packet_lengths_tensor[i] = torch::rand({}).item<float>();
-            // packet_lengths_tensor[i] = (size);
+            // packet_lengths_tensor[i] = torch::rand({}).item<float>()*100;
+            packet_lengths_tensor[i] = (size);
 
         }
 
@@ -238,15 +238,21 @@ void NEURON_PLUGINPlugin::nn_training()
         batch_count_in_epoch++;
     }
         
-        torch::Tensor tmp = torch::rand({_batch_size, _buffer_count});
-        torch::Tensor tmp2 = tmp * (200 - 0) + 0;
+        // torch::Tensor tmp = torch::rand({_batch_size, _buffer_count});
+        // torch::Tensor tmp2 = tmp * (100 - 0) + 0;
 
         std::cout<<"batch tensor: "<<concatenated_tensor<<std::endl;
-        std::cout<<"tmp tensor: "<<tmp<<std::endl <<std::endl;
+        // std::cout<<"tmp tensor: "<<tmp<<std::endl <<std::endl;
+
+        // seems like normalization fo data is needed:
+        // min-max normalization
+        // min_value = 0
+        // max_value = 200
+        // normalized_data = (batch - min_value) / (max_value - min_value)
 
 
         this->_optimizer->zero_grad();
-        torch::Tensor loss = this->_model.run_method("training_step", tmp).toTensor();
+        torch::Tensor loss = this->_model.run_method("training_step", concatenated_tensor).toTensor();
 
         loss.backward();
         this->_optimizer->step();
