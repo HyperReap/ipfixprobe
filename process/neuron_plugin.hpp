@@ -45,9 +45,9 @@ namespace ipxp {
 #define LEARNING_RATE      0.1
 #define CONTENT_SIZE       200 //max length of packet
 #define BUFFER_COUNT       30 // packets taken from flow
-#define EPOCH_COUNT_LIMIT  10 // epoch for training
-#define EPOCH_SIZE_LIMIT   64 // flows in epoch
-#define BATCH_SIZE         32 // flows in batch
+#define EPOCH_COUNT_LIMIT  11 // epoch for training
+#define EPOCH_SIZE_LIMIT   128 // flows in epoch
+#define BATCH_SIZE         16 // flows in batch
 
 #define NEURON_PLUGIN_UNIREC_TEMPLATE "NEURON_CONTENT" /* TODO: unirec template */
 
@@ -132,10 +132,20 @@ public:
    void runNN(torch::Tensor tensor);
    torch::jit::script::Module LoadModel();
    void printParams(torch::jit::script::Module model);
-   void get_parameters(std::shared_ptr<torch::jit::script::Module> module,std::vector<torch::Tensor>& params);
+   void get_parameters(std::shared_ptr<torch::jit::script::Module> module, std::vector<torch::Tensor>& params);
+   void save_state_dict();
+   void set_state_dict_parameters(std::vector<torch::Tensor>  loaded_state_dict);
+   // void set_state_dict_parameters(torch::OrderedDict<std::string, torch::Tensor>  loaded_state_dict);
+   std::vector<torch::Tensor>  load_state_dict();
+   // torch::OrderedDict<std::string, torch::Tensor>  load_state_dict();
+
+
+
+
 
    private:
    torch::jit::script::Module _model;
+   // torch::optim::Adam* _optimizer;
    torch::optim::SGD* _optimizer;
 
    std::vector<neuronRecord*> _flow_array;
