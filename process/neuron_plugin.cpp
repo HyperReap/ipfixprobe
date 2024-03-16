@@ -279,8 +279,8 @@ void NEURON_PLUGINPlugin::nn_inference()
     // }
 
     printf("run inference on saved model\n");
-    torch::Tensor tmp = torch::randn({30, 30});
-    auto output = _model.forward({tmp}).toTensor();
+    torch::Tensor ln = torch::linspace(1.0, 30.0, 30);
+    auto output = _model.forward({ln}).toTensor();
 
     std::cout<<output<<std::endl;
     return;
@@ -381,6 +381,7 @@ void NEURON_PLUGINPlugin::set_state_dict_parameters(std::vector<torch::Tensor> l
 {
     try 
     {
+        torch::NoGradGuard no_grad;
         auto named_parameters = _model.named_parameters();
 
         int iteration = 0;
