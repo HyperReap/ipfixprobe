@@ -56,6 +56,21 @@ UR_FIELDS (
    bytes NEURON_CONTENT
 )
 
+class NeuralOptParser : public OptionsParser
+{
+public:
+   bool m_inference;
+   std::string m_model_path;
+   std::string m_state_dict_path;
+
+   NeuralOptParser() : OptionsParser("neural", "Plugin for training/inference using neural networks of packet flows"), m_inference(false), m_model_path("init"), m_state_dict_path("default")
+   {
+      register_option("i", "inference", "", "Setup plugin for inference mode", [this](const char *arg){m_inference = true; return true;}, OptionFlags::NoArgument);
+      register_option("m", "model", "", "Neural network model in tochscript", [this](const char *arg){m_model_path = arg; return true;}, OptionFlags::RequiredArgument);
+      register_option("s", "state_dict", "", "State_dict of the model", [this](const char *arg){m_state_dict_path = arg; return true;}, OptionFlags::OptionalArgument);
+   }
+};
+
 struct neuroContentArray {
    neuroContentArray() : size(0.0){ };
    float size;
@@ -115,7 +130,7 @@ public:
    ~NEURON_PLUGINPlugin();
    void init(const char *params);
    void close();
-   OptionsParser *get_parser() const { return new OptionsParser("neuron_plugin", "Parse NEURON_PLUGIN traffic"); }
+   OptionsParser *get_parser() const { return new NeuralOptParser(); }
    std::string get_name() const { return "neuron_plugin"; }
    RecordExt *get_ext() const { return new neuronRecord(); }
    ProcessPlugin *copy();
@@ -144,6 +159,10 @@ public:
 
 
    private:
+   bool is_inference_mode;
+   std::string model_path;
+   std::string state_dict_path;
+
    torch::jit::script::Module _model;
    // torch::optim::Adam* _optimizer;
    torch::optim::SGD* _optimizer;

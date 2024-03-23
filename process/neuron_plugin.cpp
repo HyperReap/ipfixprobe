@@ -48,8 +48,6 @@ __attribute__((constructor)) static void register_this_plugin()
 
 NEURON_PLUGINPlugin::NEURON_PLUGINPlugin() 
 {
-    printf("RUN CTOR");
-
     _learning_rate = LEARNING_RATE;
     _content_size = CONTENT_SIZE;           // max length of packet
     _buffer_count = BUFFER_COUNT;           // packets taken from flow
@@ -60,10 +58,44 @@ NEURON_PLUGINPlugin::NEURON_PLUGINPlugin()
     _epoch_count = 0;       
     _epoch_size = 0; 
 
+    is_inference_mode = false;
+    model_path = "initCTOR";
+    state_dict_path = "defaultCTOR";
+    
+}
+
+NEURON_PLUGINPlugin::~NEURON_PLUGINPlugin()
+{
+    if(_flow_array.size() > 0)
+        _flow_array.clear();
+
+    // free(this->_optimizer); //TODO:: this calls second free?
+    close();
+}
+
+void NEURON_PLUGINPlugin::init(const char* params) 
+{
+    printf("INIT\n");
+
+    NeuralOptParser parser;
+   try {
+      parser.parse(params);
+   } catch (ParserError &e) {
+      throw PluginError(e.what());
+   }
+
+    this->is_inference_mode = parser.m_inference;
+    this->model_path = parser.m_model_path;
+    this->state_dict_path = parser.m_state_dict_path;
+    
+
+    std::cout<<"inference:" << this->is_inference_mode<<std::endl;
+    std::cout<<"model_path:" << this->model_path<<std::endl;
+    std::cout<<"state_dict:" << this->state_dict_path<<std::endl<<std::endl;
 
     this->_model = this->LoadModel();
-    nn_inference();
-    exit(-1);
+    // nn_inference();
+    // exit(-1);
 
     // Set the module to training mode if you want gradients
     this->_model.train();
@@ -75,19 +107,7 @@ NEURON_PLUGINPlugin::NEURON_PLUGINPlugin()
 
     // this->_optimizer = new torch::optim::Adam(parameters, _learning_rate);
     this->_optimizer = new torch::optim::SGD(parameters, _learning_rate);
-
 }
-
-NEURON_PLUGINPlugin::~NEURON_PLUGINPlugin()
-{
-    if(_flow_array.size()>0)
-        _flow_array.clear();
-
-    // free(this->_optimizer); //TODO:: this calls second free?
-    close();
-}
-
-void NEURON_PLUGINPlugin::init(const char* params) {}
 
 void NEURON_PLUGINPlugin::close() {}
 
