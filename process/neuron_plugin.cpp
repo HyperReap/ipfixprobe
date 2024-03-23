@@ -364,7 +364,7 @@ void NEURON_PLUGINPlugin::save_state_dict()
     try 
     {
         // torch::save(names, "state_dict_names.pt");
-        torch::save(tensors, "../models/state_dict_values.pt");
+        torch::save(tensors, state_dict_path);
     }
     catch (const c10::Error& e) 
     {
@@ -380,7 +380,7 @@ std::vector<torch::Tensor> NEURON_PLUGINPlugin::load_state_dict()
     std::vector<torch::Tensor> loaded_state_dict;
     try 
     {
-        torch::load(loaded_state_dict, "../models/state_dict_values.pt");
+        torch::load(loaded_state_dict, state_dict_path);
     }
     catch (const c10::Error& e) 
     {
@@ -438,7 +438,7 @@ torch::jit::script::Module NEURON_PLUGINPlugin::LoadModel()
 {
     torch::jit::script::Module loaded_model;
     try {
-        loaded_model = torch::jit::load("../models/scripted_model.pth");
+        loaded_model = torch::jit::load(this->model_path);
     } catch (const c10::Error& e) {
         std::cerr << "Error loading the model: " << e.what() << std::endl;
         throw e;
