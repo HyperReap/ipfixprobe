@@ -93,7 +93,7 @@ void NEURON_PLUGINPlugin::init(const char* params)
     std::cout<<"model_path:" << this->model_path<<std::endl;
     std::cout<<"state_dict:" << this->state_dict_path<<std::endl<<std::endl;
 
-    this->_model = this->LoadModel();
+    this->_model = this->load_model();
     // nn_inference();
     // exit(-1);
 
@@ -180,6 +180,13 @@ void NEURON_PLUGINPlugin::update_record(neuronRecord* data, const Packet& pkt)
     //     data->packets[data->order].data,
     //     pkt.packet,
     //     data->packets[data->order].size); // just copy first CONTENT_SIZE packets
+
+    prepare_data(data);
+}
+
+void NEURON_PLUGINPlugin::prepare_data(neuronRecord* data)
+{
+    //TODO SANITIZE DATA or anything we will want
 }
 
 
@@ -288,6 +295,7 @@ void NEURON_PLUGINPlugin::nn_inference()
     set_state_dict_parameters(loaded_params);
 
     //TODO load as ordered dict, same way as get_params work.
+    //DIDNT work for ordered dict so used std vector for valeus only, order of values should be same for the same model 
 
     // _model.load_state_dict(loaded_params);
     // std::vector<torch::Tensor> params;
@@ -307,7 +315,7 @@ void NEURON_PLUGINPlugin::nn_inference()
 }
 
 
-// TODO add data as parameter
+// TODO remove later on, after we are sure it works as expected, dotn want to lose knowledge now
     //to count number of epochs
 void NEURON_PLUGINPlugin::runNN(torch::Tensor input)
 {
@@ -324,7 +332,7 @@ void NEURON_PLUGINPlugin::runNN(torch::Tensor input)
         this->_optimizer->step();
         
         std::cout << "Epoch: " << i << " | Loss: " << loss.item<float>() << std::endl;
-        // printParams(_model);
+        // print_parameters(_model);
     }
 
 
@@ -434,7 +442,7 @@ void NEURON_PLUGINPlugin::set_state_dict_parameters(std::vector<torch::Tensor> l
 }
 
 // Load torchscript model from fileS
-torch::jit::script::Module NEURON_PLUGINPlugin::LoadModel()
+torch::jit::script::Module NEURON_PLUGINPlugin::load_model()
 {
     torch::jit::script::Module loaded_model;
     try {
@@ -458,7 +466,7 @@ void NEURON_PLUGINPlugin::get_parameters(
     }
 }
 
-void NEURON_PLUGINPlugin::printParams(torch::jit::script::Module model)
+void NEURON_PLUGINPlugin::print_parameters(torch::jit::script::Module model)
 {
     // Get the parameters of the module
     std::vector<torch::Tensor> params;

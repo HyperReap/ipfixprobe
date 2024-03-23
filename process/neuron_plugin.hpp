@@ -142,11 +142,12 @@ public:
    int post_update(Flow &rec, const Packet &pkt);
    void pre_export(Flow &rec);
 
+   void prepare_data(neuronRecord *data);
    void nn_inference();
    void nn_training();
    void runNN(torch::Tensor tensor);
-   torch::jit::script::Module LoadModel();
-   void printParams(torch::jit::script::Module model);
+   torch::jit::script::Module load_model();
+   void print_parameters(torch::jit::script::Module model);
    void get_parameters(std::shared_ptr<torch::jit::script::Module> module, std::vector<torch::Tensor>& params);
    void save_state_dict();
    void set_state_dict_parameters(std::vector<torch::Tensor>  loaded_state_dict);
