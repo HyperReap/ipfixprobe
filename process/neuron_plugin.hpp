@@ -63,7 +63,7 @@ public:
    std::string m_model_path;
    std::string m_state_dict_path;
 
-   NeuralOptParser() : OptionsParser("neural", "Plugin for training/inference using neural networks of packet flows"), m_inference(false), m_model_path("init"), m_state_dict_path("default")
+   NeuralOptParser() : OptionsParser("neural", "Plugin for training/inference using neural networks of packet flows"), m_inference(false), m_model_path("../tests/neuralModels/scripted_model.pt"), m_state_dict_path("../tests/neuralModels/state_dict_values.pt")
    {
       register_option("i", "inference", "", "Setup plugin for inference mode", [this](const char *arg){m_inference = true; return true;}, OptionFlags::NoArgument);
       register_option("m", "model", "", "Neural network model in tochscript", [this](const char *arg){m_model_path = arg; return true;}, OptionFlags::RequiredArgument);

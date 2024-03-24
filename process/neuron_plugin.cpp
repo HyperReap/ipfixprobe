@@ -59,8 +59,9 @@ NEURON_PLUGINPlugin::NEURON_PLUGINPlugin()
     _epoch_size = 0; 
 
     is_inference_mode = false;
-    model_path = "initCTOR";
-    state_dict_path = "defaultCTOR";
+    
+    model_path = "../tests/neuralModels/scripted_model.pt";
+    state_dict_path = "../tests/neuralModels/state_dict_values.pt";
     
 }
 
@@ -94,19 +95,25 @@ void NEURON_PLUGINPlugin::init(const char* params)
     std::cout<<"state_dict:" << this->state_dict_path<<std::endl<<std::endl;
 
     this->_model = this->load_model();
-    // nn_inference();
-    // exit(-1);
 
-    // Set the module to training mode if you want gradients
-    this->_model.train();
-
-    std::vector<at::Tensor> parameters;
-    for (const auto& params : _model.parameters()) {
-        parameters.push_back(params);
+    if(this->is_inference_mode)
+    {
+        std::vector<torch::Tensor> loaded_params = load_state_dict();
+        set_state_dict_parameters(loaded_params);
     }
+    else
+    {
+        // Set the module to training mode if you want gradients
+        this->_model.train();
 
-    // this->_optimizer = new torch::optim::Adam(parameters, _learning_rate);
-    this->_optimizer = new torch::optim::SGD(parameters, _learning_rate);
+        std::vector<at::Tensor> parameters;
+        for (const auto& params : _model.parameters()) {
+            parameters.push_back(params);
+        }
+
+        // this->_optimizer = new torch::optim::Adam(parameters, _learning_rate);
+        this->_optimizer = new torch::optim::SGD(parameters, _learning_rate);
+    }
 }
 
 void NEURON_PLUGINPlugin::close() {}
@@ -194,12 +201,6 @@ void NEURON_PLUGINPlugin::prepare_data(neuronRecord* data)
 void NEURON_PLUGINPlugin::pre_export(Flow& rec)
 {
     // printf("PRE EXPORT:\n");
-    if(this->_epoch_count > this->_epoch_count_limit) 
-    {
-        save_state_dict();
-        exit(1);
-    }
-
     // add record to flowArray
     neuronRecord* data = static_cast<neuronRecord*>(rec.get_extension(neuronRecord::REGISTERED_ID));
     _flow_array.push_back(data);
@@ -211,23 +212,33 @@ void NEURON_PLUGINPlugin::pre_export(Flow& rec)
         return;
     }
 
-    this->_epoch_size += this->_flow_array.size();
+    if(this->is_inference_mode)
+    {
+        nn_inference();
+    }
+    else
+    {
+        if(this->_epoch_count > this->_epoch_count_limit) 
+        {
+            save_state_dict();
+            exit(1);
+        }
 
+        this->_epoch_size += this->_flow_array.size();
 
-    // auto tmp = this->_model.state_dict();
-    std::cout<<"training - epochSize: "<< _epoch_size <<std::endl;
-    nn_training();
+        // auto tmp = this->_model.state_dict();
+        std::cout<<"training - epochSize: "<< _epoch_size <<std::endl;
+        nn_training();
 
+        if(this->_epoch_size >= this->_epoch_size_limit)
+        {
+            this->_epoch_size = 0;
+            this->_epoch_count++;
+        }
+    }
 
     printf("clear flow array\n");
     this->_flow_array.clear();
-
-    if(this->_epoch_size >= this->_epoch_size_limit)
-    {
-        this->_epoch_size = 0;
-        this->_epoch_count++;
-    }
-
     // auto size_tensor = torch::tensor({});
 
     // for (size_t i = 0; i < BUFFER_COUNT; i++) {
@@ -291,8 +302,8 @@ void NEURON_PLUGINPlugin::nn_training()
 void NEURON_PLUGINPlugin::nn_inference()
 {
     // Load the saved tensor back
-    std::vector<torch::Tensor> loaded_params = load_state_dict();
-    set_state_dict_parameters(loaded_params);
+    // std::vector<torch::Tensor> loaded_params = load_state_dict();
+    // set_state_dict_parameters(loaded_params);
 
     //TODO load as ordered dict, same way as get_params work.
     //DIDNT work for ordered dict so used std vector for valeus only, order of values should be same for the same model 
@@ -307,12 +318,37 @@ void NEURON_PLUGINPlugin::nn_inference()
     // }
 
     printf("run inference on saved model\n");
-    torch::Tensor ln = torch::linspace(1.0, 30.0, 30);
-    auto output = _model.forward({ln}).toTensor();
+    // torch::Tensor ln = torch::linspace(1.0, 30.0, 30);
+    // auto output = _model.forward({ln}).toTensor();
+
+    
+
+    int batch_count_in_epoch = 0; //todo renaqme, feels weird
+    torch::Tensor concatenated_tensor = torch::empty({_batch_size, _buffer_count}, torch::kFloat32);
+
+    for (auto record : this->_flow_array)
+    {
+        torch::Tensor packet_lengths_tensor = torch::empty({_buffer_count}, torch::kFloat32);
+
+        for (size_t i = 0; i < BUFFER_COUNT; i++) 
+        {
+            float size = record->packets[i].size; 
+            packet_lengths_tensor[i] = (size);
+        }
+
+        concatenated_tensor[batch_count_in_epoch] = packet_lengths_tensor;
+
+
+        batch_count_in_epoch++;
+    }
+
+    auto output = _model.forward({concatenated_tensor}).toTensor();
 
     std::cout<<output<<std::endl;
     return;
 }
+
+
 
 
 // TODO remove later on, after we are sure it works as expected, dotn want to lose knowledge now
