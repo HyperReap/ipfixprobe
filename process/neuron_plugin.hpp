@@ -63,7 +63,7 @@ public:
    std::string m_model_path;
    std::string m_state_dict_path;
 
-   NeuralOptParser() : OptionsParser("neural", "Plugin for training/inference using neural networks of packet flows"), m_inference(false), m_model_path("../tests/neuralModels/scripted_model.pt"), m_state_dict_path("../tests/neuralModels/state_dict_values.pt")
+   NeuralOptParser() : OptionsParser("neural", "Plugin for training/inference using neural networks of packet flows"), m_inference(false), m_model_path("../tests/neuralModels/scripted_model.pth"), m_state_dict_path("../tests/neuralModels/state_dict_values.pt")
    {
       register_option("i", "inference", "", "Setup plugin for inference mode", [this](const char *arg){m_inference = true; return true;}, OptionFlags::NoArgument);
       register_option("m", "model", "", "Neural network model in tochscript", [this](const char *arg){m_model_path = arg; return true;}, OptionFlags::RequiredArgument);
@@ -151,8 +151,10 @@ public:
    void get_parameters(std::shared_ptr<torch::jit::script::Module> module, std::vector<torch::Tensor>& params);
    void save_state_dict();
    void set_state_dict_parameters(std::vector<torch::Tensor>  loaded_state_dict);
-   // void set_state_dict_parameters(torch::OrderedDict<std::string, torch::Tensor>  loaded_state_dict);
    std::vector<torch::Tensor>  load_state_dict();
+   torch::Tensor create_tensor_based_on_flow_array();
+
+   // void set_state_dict_parameters(torch::OrderedDict<std::string, torch::Tensor>  loaded_state_dict);
    // torch::OrderedDict<std::string, torch::Tensor>  load_state_dict();
 
 

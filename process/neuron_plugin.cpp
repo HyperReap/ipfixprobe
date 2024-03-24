@@ -130,8 +130,6 @@ int NEURON_PLUGINPlugin::pre_create(Packet& pkt)
 
 int NEURON_PLUGINPlugin::pre_update(Flow& rec, Packet& pkt)
 {
-    // std::cout<<"inference"<<std::endl;
-    // nn_inference();
     return 0;
 }
 
@@ -253,25 +251,7 @@ void NEURON_PLUGINPlugin::pre_export(Flow& rec)
 
 void NEURON_PLUGINPlugin::nn_training()
 {
-    int batch_count_in_epoch = 0;
-    torch::Tensor concatenated_tensor = torch::empty({_batch_size, _buffer_count}, torch::kFloat32);
-
-    for (auto record : this->_flow_array)
-    {
-        torch::Tensor packet_lengths_tensor = torch::empty({_buffer_count}, torch::kFloat32);
-
-        for (size_t i = 0; i < BUFFER_COUNT; i++) 
-        {
-            float size = record->packets[i].size; 
-            packet_lengths_tensor[i] = (size);
-
-        }
-
-        concatenated_tensor[batch_count_in_epoch] = packet_lengths_tensor;
-
-
-        batch_count_in_epoch++;
-    }
+        auto tensor  = create_tensor_based_on_flow_array();
         
         // torch::Tensor tmp = torch::rand({_batch_size, _buffer_count});
         // torch::Tensor tmp2 = tmp * (100 - 0) + 0;
@@ -288,7 +268,7 @@ void NEURON_PLUGINPlugin::nn_training()
 
 
         this->_optimizer->zero_grad();
-        torch::Tensor loss = this->_model.run_method("training_step", concatenated_tensor).toTensor();
+        torch::Tensor loss = this->_model.run_method("training_step", tensor).toTensor();
 
         loss.backward();
         this->_optimizer->step();
@@ -322,7 +302,16 @@ void NEURON_PLUGINPlugin::nn_inference()
     // auto output = _model.forward({ln}).toTensor();
 
     
+    auto tensor  = create_tensor_based_on_flow_array();
 
+    auto output = _model.forward({tensor}).toTensor();
+
+    std::cout<<output<<std::endl;
+    return;
+}
+
+torch::Tensor NEURON_PLUGINPlugin::create_tensor_based_on_flow_array()
+{
     int batch_count_in_epoch = 0; //todo renaqme, feels weird
     torch::Tensor concatenated_tensor = torch::empty({_batch_size, _buffer_count}, torch::kFloat32);
 
@@ -330,7 +319,7 @@ void NEURON_PLUGINPlugin::nn_inference()
     {
         torch::Tensor packet_lengths_tensor = torch::empty({_buffer_count}, torch::kFloat32);
 
-        for (size_t i = 0; i < BUFFER_COUNT; i++) 
+        for (size_t i = 0; i < _buffer_count; i++) 
         {
             float size = record->packets[i].size; 
             packet_lengths_tensor[i] = (size);
@@ -341,13 +330,8 @@ void NEURON_PLUGINPlugin::nn_inference()
 
         batch_count_in_epoch++;
     }
-
-    auto output = _model.forward({concatenated_tensor}).toTensor();
-
-    std::cout<<output<<std::endl;
-    return;
+    return concatenated_tensor;
 }
-
 
 
 
