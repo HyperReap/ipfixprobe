@@ -160,6 +160,8 @@ int NEURON_PLUGINPlugin::post_update(Flow& rec, const Packet& pkt)
     return 0;
 }
 
+static int counter = 0;
+
 void NEURON_PLUGINPlugin::update_record(neuronRecord* data, const Packet& pkt)
 {
     /// zatim seru an smer
@@ -168,18 +170,17 @@ void NEURON_PLUGINPlugin::update_record(neuronRecord* data, const Packet& pkt)
 
     //  data->packets[data->order].size = MIN(CONTENT_SIZE, pkt.payload_len); // watchout for
     ///  overflow
-        data->packets[data->order].size = pkt.packet_len_wire;
+        // data->packets[data->order].size = pkt.packet_len;
 
-    // if (pkt.packet_len_wire < CONTENT_SIZE)
-    // {
-    //     data->packets[data->order].size = pkt.packet_len_wire;
-    // }
-    // else 
-    // {
-    //     data->packets[data->order].size = CONTENT_SIZE;
-    // }
+    counter++;
+    std::cout<< "order :" << (int)data->order << " | packet len : " << pkt.packet_len << std::endl;
+    std::cout<<"counter:" << counter <<std::endl;
+    auto& target_packet = data->packets[data->order];
+    size_t min = target_packet.size < CONTENT_SIZE ? target_packet.size : CONTENT_SIZE;
+    std::copy(pkt.packet, pkt.packet + min, target_packet.data);
+        // memcpy(packet.data, pkt.packet, min);
 
-    // std::cout<< "order :" << (int)data->order << " | packet len wire: " << pkt.packet_len_wire << std::endl;
+
 
     // memcpy(
     //     data->packets[data->order].data,

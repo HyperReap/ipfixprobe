@@ -43,7 +43,7 @@
 namespace ipxp {
 
 #define LEARNING_RATE      0.1
-#define CONTENT_SIZE       200 //max length of packet
+#define CONTENT_SIZE       50 //max length of packet
 #define BUFFER_COUNT       30 // packets taken from flow
 #define EPOCH_COUNT_LIMIT  11 // epoch for training
 #define EPOCH_SIZE_LIMIT   128 // flows in epoch
@@ -73,8 +73,12 @@ public:
 
 struct neuroContentArray {
    neuroContentArray() : size(0.0){ };
+   // neuroContentArray() : size(0.0), data(new uint8_t[CONTENT_SIZE + 1]) {}
+   // ~neuroContentArray() { delete[] data; }
+
    float size;
-   uint8_t data[CONTENT_SIZE];
+   uint8_t data[CONTENT_SIZE+1];
+   // uint8_t* data;
 };
 
 /**
@@ -173,13 +177,13 @@ public:
    std::vector<neuronRecord*> _flow_array;
 
    double _learning_rate;
-   int _content_size; // max length of packet
-   int _buffer_count; // packets taken from flow
-   int _epoch_count; // epoch for training
-   int _epoch_count_limit; // epoch for training
-   int _epoch_size; // flows in epoch
-   int _epoch_size_limit; // maximum flows in epoch
-   int _batch_size; // flows in batch
+   unsigned _content_size; // max length of packet
+   unsigned _buffer_count; // packets taken from flow
+   unsigned _epoch_count; // epoch for training
+   unsigned _epoch_count_limit; // epoch for training
+   unsigned _epoch_size; // flows in epoch
+   unsigned _epoch_size_limit; // maximum flows in epoch
+   unsigned _batch_size; // flows in batch
 
 };
 
