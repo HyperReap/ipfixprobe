@@ -172,6 +172,7 @@ void NEURON_PLUGINPlugin::update_record(neuronRecord* data, const Packet& pkt)
     ///  overflow
         // data->packets[data->order].size = pkt.packet_len;
 
+//todo throw away more than BUFFER_COUNT packets
     counter++;
     std::cout<< "order :" << (int)data->order << " | packet len : " << pkt.packet_len << std::endl;
     std::cout<<"counter:" << counter <<std::endl;
