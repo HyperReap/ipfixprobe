@@ -1,12 +1,16 @@
 import torch
 import torch.optim as optim
 
+packets = 5
+buffercount = 10
+flows = 16
+
 class Model(torch.nn.Module):
     def __init__(self):
         super(Model, self).__init__()
         
         self.flatten = torch.nn.Flatten()  # Flatten the input tensor
-        self.linear = torch.nn.Linear(30 * 50, 1)  # Adjusted input size to match the size of each flow's content
+        self.linear = torch.nn.Linear(packets * buffercount, 1)  # Adjusted input size to match the size of each flow's content
         # self.linear = torch.nn.Linear(30, 1)
         # self.optimizer = optim.SGD(self.parameters(), lr=0.01)
 
@@ -38,7 +42,7 @@ model = Model()
 scripted_model = torch.jit.script(model)
 scripted_model.save("scripted_model.pth")
 
-target = torch.randn(16,30,50)
+target = torch.randn(flows,packets,buffercount)
 print("target: \n" + str(target))
 
 print("forward")

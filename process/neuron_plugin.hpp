@@ -43,11 +43,12 @@
 namespace ipxp {
 
 #define LEARNING_RATE      0.1
-#define CONTENT_SIZE       50 //max length of packet
-#define BUFFER_COUNT       30 // packets taken from flow
-#define EPOCH_COUNT_LIMIT  2 // epoch for training
-#define EPOCH_SIZE_LIMIT   32 // flows in epoch
+#define CONTENT_SIZE       10 //max length of packet
+#define BUFFER_COUNT       5 // packets taken from flow
+#define EPOCH_COUNT_LIMIT  4 // epoch for training
+#define EPOCH_SIZE_LIMIT   128 // flows in epoch
 #define BATCH_SIZE         16 // flows in batch
+#define DEFAULT_STATE_DICT "~/ipfixprobe/tests/neuralModels/state_dict_values.pt"
 
 #define NEURON_PLUGIN_UNIREC_TEMPLATE "NEURON_CONTENT" /* TODO: unirec template */
 
@@ -63,7 +64,7 @@ public:
    std::string m_model_path;
    std::string m_state_dict_path;
 
-   NeuralOptParser() : OptionsParser("neural", "Plugin for training/inference using neural networks of packet flows"), m_inference(false), m_model_path("../tests/neuralModels/scripted_model.pth"), m_state_dict_path("../tests/neuralModels/state_dict_values.pt")
+   NeuralOptParser() : OptionsParser("neural", "Plugin for training/inference using neural networks of packet flows"), m_inference(false), m_model_path("../tests/neuralModels/scripted_model.pth"), m_state_dict_path(DEFAULT_STATE_DICT)
    {
       register_option("i", "inference", "", "Setup plugin for inference mode", [this](const char *arg){m_inference = true; return true;}, OptionFlags::NoArgument);
       register_option("m", "model", "", "Neural network model in tochscript", [this](const char *arg){m_model_path = arg; return true;}, OptionFlags::RequiredArgument);
