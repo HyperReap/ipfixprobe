@@ -60,8 +60,8 @@ NEURON_PLUGINPlugin::NEURON_PLUGINPlugin()
 
     is_inference_mode = false;
     
-    model_path = "../tests/neuralModels/scripted_model.pt";
-    state_dict_path = "../tests/neuralModels/state_dict_values.pt";
+    model_path = "../tests/neuralModels/scripted_model.pth";
+    state_dict_path = DEFAULT_STATE_DICT;
     
 }
 
@@ -105,6 +105,13 @@ void NEURON_PLUGINPlugin::init(const char* params)
     {
         // Set the module to training mode if you want gradients
         this->_model.train();
+
+        if(state_dict_path != DEFAULT_STATE_DICT) 
+        {
+            std::vector<torch::Tensor> loaded_params = load_state_dict();
+            if(loaded_params.size() > 0)
+                set_state_dict_parameters(loaded_params);
+        }
 
         std::vector<at::Tensor> parameters;
         for (const auto& params : _model.parameters()) {
@@ -230,9 +237,9 @@ void NEURON_PLUGINPlugin::nn_training()
 {
         auto tensor  = create_tensor_based_on_flow_array();
 
-        std::cout<<"tensor: "<<std::endl<<tensor<<std::endl;
-        auto mean = torch::mean(tensor);
-        std::cout<<"mean: "<<mean<<std::endl;
+        // std::cout<<"tensor: "<<std::endl<<tensor<<std::endl;
+        // auto mean = torch::mean(tensor);
+        // std::cout<<"mean: "<<mean<<std::endl;
 
         this->_optimizer->zero_grad();
         torch::Tensor loss = this->_model.run_method("training_step", tensor).toTensor();
@@ -268,19 +275,22 @@ void NEURON_PLUGINPlugin::nn_inference()
 torch::Tensor NEURON_PLUGINPlugin::create_tensor_based_on_flow_array()
 {
     int batches_in_epoch = 0; //todo renaqme, feels weird
-    torch::Tensor concatenated_tensor = torch::empty({_batch_size, _buffer_count, _content_size}, torch::kFloat32);
+    torch::Tensor concatenated_tensor = torch::zeros({_batch_size, _buffer_count, _content_size}, torch::kFloat32);
 
     for (auto record : this->_flow_array)
     {
-        torch::Tensor packet_data_tensor = torch::empty({_buffer_count, _content_size}, torch::kFloat32);
+        torch::Tensor packet_data_tensor = torch::zeros({_buffer_count, _content_size}, torch::kFloat32);
 
         for (size_t i = 0; i < _buffer_count; i++) 
         {
             size_t size = record->packets[i].size;
             for (size_t j = 0; j < size; j++)
             {
-                packet_data_tensor[i][j] = record->packets[i].data[j]/255.0; //normalization
+                auto data = record->packets[i].data[j];
+                packet_data_tensor[i][j] = data/255.0; //normalization
             }
+                // std::cout<<std::endl<<std::endl;
+                // std::cout<<packet_data_tensor <<std::endl;
         }
         // Concatenate packet_data_tensor along the batch dimension
         concatenated_tensor[batches_in_epoch] = packet_data_tensor;
@@ -317,7 +327,7 @@ void NEURON_PLUGINPlugin::save_state_dict()
     }
     catch (const c10::Error& e) 
     {
-        std::cerr << "Error saving the state dictionary\n";
+        std::cerr << "Error saving the state dictionary\n" << e.what() <<std::endl;
         return;
     }
 }
@@ -331,7 +341,7 @@ std::vector<torch::Tensor> NEURON_PLUGINPlugin::load_state_dict()
     }
     catch (const c10::Error& e) 
     {
-        std::cerr << "Error loading the state dictionary\n";
+        std::cerr << "Error loading the state dictionary\n" <<std::endl;
     }
     return loaded_state_dict;
 }
