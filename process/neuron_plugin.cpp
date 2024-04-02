@@ -161,7 +161,7 @@ void NEURON_PLUGINPlugin::update_record(neuronRecord* data, const Packet& pkt)
     //  data->packets[data->order].size = MIN(CONTENT_SIZE, pkt.payload_len); // watchout for
 
     //throw away more than BUFFER_COUNT packets per flow
-    if(data->order >= this->_buffer_count-1)
+    if(data->order >= this->_buffer_count)
     {
         // printf("Too many packets in this flow > %d\n", BUFFER_COUNT);
         return;
@@ -171,7 +171,7 @@ void NEURON_PLUGINPlugin::update_record(neuronRecord* data, const Packet& pkt)
     size_t min = pkt.packet_len < CONTENT_SIZE ? pkt.packet_len: CONTENT_SIZE;
     data->packets[data->order].size = min;
 
-    std::cout<< "order :" << (int)data->order << " | packet len : " << pkt.packet_len << std::endl;
+    // std::cout<< "order :" << (int)data->order << " | packet len : " << pkt.packet_len << std::endl;
 
     if(data->order > BUFFER_COUNT)
     {
@@ -292,25 +292,49 @@ void NEURON_PLUGINPlugin::nn_inference()
     return;
 }
 
+// torch::Tensor NEURON_PLUGINPlugin::create_tensor_based_on_flow_array()
+// {
+//     int batch_count_in_epoch = 0; //todo renaqme, feels weird
+//     torch::Tensor concatenated_tensor = torch::empty({_batch_size, _buffer_count}, torch::kFloat32);
+
+//     for (auto record : this->_flow_array)
+//     {
+//         torch::Tensor packet_lengths_tensor = torch::empty({_buffer_count}, torch::kFloat32);
+
+//         for (size_t i = 0; i < _buffer_count; i++) 
+//         {
+//             float size = record->packets[i].size; 
+//             packet_lengths_tensor[i] = (size);
+//         }
+
+//         concatenated_tensor[batch_count_in_epoch] = packet_lengths_tensor;
+
+
+//         batch_count_in_epoch++;
+//     }
+//     return concatenated_tensor;
+// }
+
 torch::Tensor NEURON_PLUGINPlugin::create_tensor_based_on_flow_array()
 {
-    int batch_count_in_epoch = 0; //todo renaqme, feels weird
-    torch::Tensor concatenated_tensor = torch::empty({_batch_size, _buffer_count}, torch::kFloat32);
+    int batches_in_epoch = 0; //todo renaqme, feels weird
+    torch::Tensor concatenated_tensor = torch::empty({_batch_size, _buffer_count, _content_size}, torch::kFloat32);
 
     for (auto record : this->_flow_array)
     {
-        torch::Tensor packet_lengths_tensor = torch::empty({_buffer_count}, torch::kFloat32);
+        torch::Tensor packet_data_tensor = torch::empty({_buffer_count, _content_size}, torch::kFloat32);
 
         for (size_t i = 0; i < _buffer_count; i++) 
         {
-            float size = record->packets[i].size; 
-            packet_lengths_tensor[i] = (size);
+            size_t size = record->packets[i].size;
+            for (size_t j = 0; j < size; j++)
+            {
+                packet_data_tensor[i][j] = record->packets[i].data[j]/255.0; //normalization
+            }
         }
-
-        concatenated_tensor[batch_count_in_epoch] = packet_lengths_tensor;
-
-
-        batch_count_in_epoch++;
+        // Concatenate packet_data_tensor along the batch dimension
+        concatenated_tensor[batches_in_epoch] = packet_data_tensor;
+        batches_in_epoch++;
     }
     return concatenated_tensor;
 }
