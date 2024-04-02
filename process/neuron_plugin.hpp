@@ -45,7 +45,7 @@ namespace ipxp {
 #define LEARNING_RATE      0.1
 #define CONTENT_SIZE       150 //max length of packet
 #define BUFFER_COUNT       30 // packets taken from flow
-#define EPOCH_COUNT_LIMIT  11 // epoch for training
+#define EPOCH_COUNT_LIMIT  2 // epoch for training
 #define EPOCH_SIZE_LIMIT   128 // flows in epoch
 #define BATCH_SIZE         16 // flows in batch
 
@@ -73,12 +73,10 @@ public:
 
 struct neuroContentArray {
    neuroContentArray() : size(0.0){ };
-   // neuroContentArray() : size(0.0), data(new uint8_t[CONTENT_SIZE + 1]) {}
-   // ~neuroContentArray() { delete[] data; }
 
-   float size;
+   size_t size;
+
    uint8_t data[CONTENT_SIZE+1];
-   // uint8_t* data;
 };
 
 /**
@@ -149,21 +147,11 @@ public:
    void prepare_data(neuronRecord *data);
    void nn_inference();
    void nn_training();
-   void runNN(torch::Tensor tensor);
    torch::jit::script::Module load_model();
-   void print_parameters(torch::jit::script::Module model);
-   void get_parameters(std::shared_ptr<torch::jit::script::Module> module, std::vector<torch::Tensor>& params);
    void save_state_dict();
    void set_state_dict_parameters(std::vector<torch::Tensor>  loaded_state_dict);
    std::vector<torch::Tensor>  load_state_dict();
    torch::Tensor create_tensor_based_on_flow_array();
-
-   // void set_state_dict_parameters(torch::OrderedDict<std::string, torch::Tensor>  loaded_state_dict);
-   // torch::OrderedDict<std::string, torch::Tensor>  load_state_dict();
-
-
-
-
 
    private:
    bool is_inference_mode;

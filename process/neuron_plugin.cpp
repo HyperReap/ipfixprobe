@@ -144,7 +144,7 @@ int NEURON_PLUGINPlugin::post_create(Flow& rec, const Packet& pkt)
     return 0;
 }
 
-// catch 30 packets of first 100 bytes, jak sakra funguje tohle vzbirani flow :D proc jsou vsechnz
+
 int NEURON_PLUGINPlugin::post_update(Flow& rec, const Packet& pkt)
 {
     neuronRecord* data = static_cast<neuronRecord*>(rec.get_extension(neuronRecord::REGISTERED_ID));
@@ -154,13 +154,6 @@ int NEURON_PLUGINPlugin::post_update(Flow& rec, const Packet& pkt)
 
 void NEURON_PLUGINPlugin::update_record(neuronRecord* data, const Packet& pkt)
 {
-    /// zatim seru an smer
-    // printf("incoming packet.len %d \n", pkt.packet_len);
-    // printf("incoming payload.len %d \n", pkt.payload_len);
-
-    //  data->packets[data->order].size = MIN(CONTENT_SIZE, pkt.payload_len); // watchout for
-
-    //throw away more than BUFFER_COUNT packets per flow
     if(data->order >= this->_buffer_count)
     {
         // printf("Too many packets in this flow > %d\n", BUFFER_COUNT);
@@ -180,14 +173,6 @@ void NEURON_PLUGINPlugin::update_record(neuronRecord* data, const Packet& pkt)
 
     auto& target_packet = data->packets[data->order];
     std::copy(pkt.packet, pkt.packet + target_packet.size , target_packet.data);
-        // memcpy(packet.data, pkt.packet, min);
-
-
-
-    // memcpy(
-    //     data->packets[data->order].data,
-    //     pkt.packet,
-    //     data->packets[data->order].size); // just copy first CONTENT_SIZE packets
 
     prepare_data(data);
     data->order++;
@@ -202,7 +187,6 @@ void NEURON_PLUGINPlugin::prepare_data(neuronRecord* data)
 
 void NEURON_PLUGINPlugin::pre_export(Flow& rec)
 {
-    // printf("PRE EXPORT:\n");
     // add record to flowArray
     neuronRecord* data = static_cast<neuronRecord*>(rec.get_extension(neuronRecord::REGISTERED_ID));
     _flow_array.push_back(data);
@@ -228,7 +212,6 @@ void NEURON_PLUGINPlugin::pre_export(Flow& rec)
 
         this->_epoch_size += this->_flow_array.size();
 
-        // auto tmp = this->_model.state_dict();
         std::cout<<"training - epochSize: "<< _epoch_size <<std::endl;
         nn_training();
 
@@ -246,15 +229,6 @@ void NEURON_PLUGINPlugin::pre_export(Flow& rec)
 void NEURON_PLUGINPlugin::nn_training()
 {
         auto tensor  = create_tensor_based_on_flow_array();
-
-        //TODDO uddelej normalizai na dadta 1/255 pimo ve structu - minmax
-        // seems like normalization fo data is needed:
-        // min-max normalization
-        // min_value = 0
-        // max_value = 200
-        // normalized_data = (batch - min_value) / (max_value - min_value)
-
-
 
         std::cout<<"tensor: "<<std::endl<<tensor<<std::endl;
         auto mean = torch::mean(tensor);
@@ -282,7 +256,6 @@ void NEURON_PLUGINPlugin::nn_inference()
     auto mean = torch::mean(tensor);
     std::cout<<"mean: "<<mean<<std::endl;
 
-
     auto output = _model.forward({tensor}).toTensor();
 
     std::cout<<output<<std::endl;
@@ -291,29 +264,6 @@ void NEURON_PLUGINPlugin::nn_inference()
     
     return;
 }
-
-// torch::Tensor NEURON_PLUGINPlugin::create_tensor_based_on_flow_array()
-// {
-//     int batch_count_in_epoch = 0; //todo renaqme, feels weird
-//     torch::Tensor concatenated_tensor = torch::empty({_batch_size, _buffer_count}, torch::kFloat32);
-
-//     for (auto record : this->_flow_array)
-//     {
-//         torch::Tensor packet_lengths_tensor = torch::empty({_buffer_count}, torch::kFloat32);
-
-//         for (size_t i = 0; i < _buffer_count; i++) 
-//         {
-//             float size = record->packets[i].size; 
-//             packet_lengths_tensor[i] = (size);
-//         }
-
-//         concatenated_tensor[batch_count_in_epoch] = packet_lengths_tensor;
-
-
-//         batch_count_in_epoch++;
-//     }
-//     return concatenated_tensor;
-// }
 
 torch::Tensor NEURON_PLUGINPlugin::create_tensor_based_on_flow_array()
 {
@@ -354,7 +304,6 @@ void NEURON_PLUGINPlugin::save_state_dict()
     {
         auto name = named_param.name;
         auto tensor = named_param.value;
-        // // // state_dict.insert(name, tensor);
 
         names.push_back(name);
         tensors.push_back(tensor);
@@ -364,7 +313,6 @@ void NEURON_PLUGINPlugin::save_state_dict()
     
     try 
     {
-        // torch::save(names, "state_dict_names.pt");
         torch::save(tensors, state_dict_path);
     }
     catch (const c10::Error& e) 
@@ -374,10 +322,8 @@ void NEURON_PLUGINPlugin::save_state_dict()
     }
 }
 
-// torch::OrderedDict<std::string, torch::Tensor> NEURON_PLUGINPlugin::load_state_dict()
 std::vector<torch::Tensor> NEURON_PLUGINPlugin::load_state_dict()
 {
-    // torch::OrderedDict<std::string, torch::Tensor> loaded_state_dict;
     std::vector<torch::Tensor> loaded_state_dict;
     try 
     {
@@ -414,17 +360,6 @@ void NEURON_PLUGINPlugin::set_state_dict_parameters(std::vector<torch::Tensor> l
             named_param.value.set_(param);
             iteration++;
         }        
-
-        // Iterate through the named parameters and set them
-        // for (const auto& named_param : named_parameters) 
-        // {
-        //     const std::string& name = named_param.name;
-        //     if (loaded_state_dict.contains(name)) {
-        //         named_param.value.set_(loaded_state_dict[name]);
-        //     }
-        // }
-
-
     }
     catch (const c10::Error& e) 
     {
