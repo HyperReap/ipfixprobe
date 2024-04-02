@@ -148,19 +148,11 @@ int NEURON_PLUGINPlugin::post_create(Flow& rec, const Packet& pkt)
 int NEURON_PLUGINPlugin::post_update(Flow& rec, const Packet& pkt)
 {
     neuronRecord* data = static_cast<neuronRecord*>(rec.get_extension(neuronRecord::REGISTERED_ID));
-    data->order++;
-
-    if (data->order > BUFFER_COUNT) {
-        // printf("Too many packets in this flow > %d\n", BUFFER_COUNT);
-        return 0;
-    }
 
     update_record(data, pkt);
 
     return 0;
 }
-
-static int counter = 0;
 
 void NEURON_PLUGINPlugin::update_record(neuronRecord* data, const Packet& pkt)
 {
@@ -169,16 +161,27 @@ void NEURON_PLUGINPlugin::update_record(neuronRecord* data, const Packet& pkt)
     // printf("incoming payload.len %d \n", pkt.payload_len);
 
     //  data->packets[data->order].size = MIN(CONTENT_SIZE, pkt.payload_len); // watchout for
-    ///  overflow
-        // data->packets[data->order].size = pkt.packet_len;
 
-//todo throw away more than BUFFER_COUNT packets
-    counter++;
+    //throw away more than BUFFER_COUNT packets per flow
+    if(data->order >= this->_buffer_count-1)
+    {
+        // printf("Too many packets in this flow > %d\n", BUFFER_COUNT);
+        return;
+    }
+
+    ///  overflow
+    size_t min = pkt.packet_len < CONTENT_SIZE ? pkt.packet_len: CONTENT_SIZE;
+    data->packets[data->order].size = min;
+
     std::cout<< "order :" << (int)data->order << " | packet len : " << pkt.packet_len << std::endl;
-    std::cout<<"counter:" << counter <<std::endl;
+
+    if(data->order > BUFFER_COUNT)
+    {
+        std::cerr << "somehow got wrong order number:" << (int)data->order <<std::endl;
+    }
+
     auto& target_packet = data->packets[data->order];
-    size_t min = target_packet.size < CONTENT_SIZE ? target_packet.size : CONTENT_SIZE;
-    std::copy(pkt.packet, pkt.packet + min, target_packet.data);
+    std::copy(pkt.packet, pkt.packet + target_packet.size , target_packet.data);
         // memcpy(packet.data, pkt.packet, min);
 
 
@@ -189,6 +192,7 @@ void NEURON_PLUGINPlugin::update_record(neuronRecord* data, const Packet& pkt)
     //     data->packets[data->order].size); // just copy first CONTENT_SIZE packets
 
     prepare_data(data);
+    data->order++;
 }
 
 void NEURON_PLUGINPlugin::prepare_data(neuronRecord* data)
@@ -262,12 +266,19 @@ void NEURON_PLUGINPlugin::nn_training()
 
         // std::cout<<"tmp tensor: "<<tmp<<std::endl <<std::endl;
 
+
+        //TODDO uddelej normalizai na dadta 1/255 pimo ve structu - minmax
         // seems like normalization fo data is needed:
         // min-max normalization
         // min_value = 0
         // max_value = 200
         // normalized_data = (batch - min_value) / (max_value - min_value)
 
+
+
+        std::cout<<"tensor: "<<std::endl<<tensor<<std::endl;
+        auto mean = torch::mean(tensor);
+        std::cout<<"mean: "<<mean<<std::endl;
 
         this->_optimizer->zero_grad();
         torch::Tensor loss = this->_model.run_method("training_step", tensor).toTensor();
@@ -306,9 +317,17 @@ void NEURON_PLUGINPlugin::nn_inference()
     
     auto tensor  = create_tensor_based_on_flow_array();
 
+    std::cout<<"tensor: "<<std::endl<<tensor<<std::endl;
+    auto mean = torch::mean(tensor);
+    std::cout<<"mean: "<<mean<<std::endl;
+
+
     auto output = _model.forward({tensor}).toTensor();
 
     std::cout<<output<<std::endl;
+    std::cout<<std::endl;
+    std::cout<<std::endl;
+    
     return;
 }
 
