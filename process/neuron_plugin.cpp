@@ -148,9 +148,7 @@ int NEURON_PLUGINPlugin::post_create(Flow& rec, const Packet& pkt)
 int NEURON_PLUGINPlugin::post_update(Flow& rec, const Packet& pkt)
 {
     neuronRecord* data = static_cast<neuronRecord*>(rec.get_extension(neuronRecord::REGISTERED_ID));
-
     update_record(data, pkt);
-
     return 0;
 }
 
@@ -243,29 +241,11 @@ void NEURON_PLUGINPlugin::pre_export(Flow& rec)
 
     printf("clear flow array\n");
     this->_flow_array.clear();
-    // auto size_tensor = torch::tensor({});
-
-    // for (size_t i = 0; i < BUFFER_COUNT; i++) {
-
-    //     auto size = data->packets[i].size;
-    //     size_tensor = torch::cat({size_tensor, torch::tensor({size})}, 0);
-    // }
-    // // std::cout << std::endl << "SIZE TENSOR" << "\t" << size_tensor << std::endl; //todo::dump
-    // // into bin file
-    // runNN(size_tensor);
 }
 
 void NEURON_PLUGINPlugin::nn_training()
 {
         auto tensor  = create_tensor_based_on_flow_array();
-        
-        // torch::Tensor tmp = torch::rand({_batch_size, _buffer_count});
-        // torch::Tensor tmp2 = tmp * (100 - 0) + 0;
-
-        // std::cout<<"batch tensor: "<<concatenated_tensor<<std::endl;
-
-        // std::cout<<"tmp tensor: "<<tmp<<std::endl <<std::endl;
-
 
         //TODDO uddelej normalizai na dadta 1/255 pimo ve structu - minmax
         // seems like normalization fo data is needed:
@@ -294,27 +274,8 @@ void NEURON_PLUGINPlugin::nn_training()
 
 void NEURON_PLUGINPlugin::nn_inference()
 {
-    // Load the saved tensor back
-    // std::vector<torch::Tensor> loaded_params = load_state_dict();
-    // set_state_dict_parameters(loaded_params);
-
-    //TODO load as ordered dict, same way as get_params work.
-    //DIDNT work for ordered dict so used std vector for valeus only, order of values should be same for the same model 
-
-    // _model.load_state_dict(loaded_params);
-    // std::vector<torch::Tensor> params;
-    // get_parameters(std::make_shared<torch::jit::script::Module>(_model), params);
-
-    //  // Load the trained parameters into the loaded model
-    // for (size_t i = 0; i < params.size(); ++i) {
-    //     params[i].set_data(loaded_params[i]);
-    // }
-
     printf("run inference on saved model\n");
-    // torch::Tensor ln = torch::linspace(1.0, 30.0, 30);
-    // auto output = _model.forward({ln}).toTensor();
 
-    
     auto tensor  = create_tensor_based_on_flow_array();
 
     std::cout<<"tensor: "<<std::endl<<tensor<<std::endl;
@@ -355,38 +316,7 @@ torch::Tensor NEURON_PLUGINPlugin::create_tensor_based_on_flow_array()
 }
 
 
-
-// TODO remove later on, after we are sure it works as expected, dotn want to lose knowledge now
-    //to count number of epochs
-void NEURON_PLUGINPlugin::runNN(torch::Tensor input)
-{
-    printf("RUN NN\n");
-
-    for (auto i = 0; i < 50; i++) {
-
-        this->_optimizer->zero_grad();
-        torch::Tensor tmp = torch::randn({30, 30});
-
-        torch::Tensor loss = this->_model.run_method("training_step", tmp).toTensor();
-        
-        loss.backward();
-        this->_optimizer->step();
-        
-        std::cout << "Epoch: " << i << " | Loss: " << loss.item<float>() << std::endl;
-        // print_parameters(_model);
-    }
-
-
-    torch::Tensor ln = torch::linspace(1.0, 30.0, 30);
-    torch::Tensor output = _model.forward({ln}).toTensor();
-    std::cout << "Output: " << output << std::endl;
-    
- 
-}
-
-
-
-        //https://discuss.pytorch.org/t/saving-and-loading-model-with-libtorch-c/184482
+//https://discuss.pytorch.org/t/saving-and-loading-model-with-libtorch-c/184482
 void NEURON_PLUGINPlugin::save_state_dict()
 {
     printf("End of EPOCHS - Save Model\n");
@@ -394,10 +324,8 @@ void NEURON_PLUGINPlugin::save_state_dict()
     std::vector<std::string> names; //hypothetically dont need those, will always be in the same order as it should be
     std::vector<torch::Tensor> tensors;
 
-    // torch::OrderedDict<std::string, torch::Tensor> state_dict;
  
     std::cout << "state_dict:" << std::endl;
-    // get_parameters(std::make_shared<torch::jit::script::Module>(_model), tensors);
     for (const auto& named_param : named_parameters) 
     {
         auto name = named_param.name;
@@ -494,27 +422,6 @@ torch::jit::script::Module NEURON_PLUGINPlugin::load_model()
     }
 
     return loaded_model;
-}
-
-// TODO might eb worth it for taking params for gradients
-void NEURON_PLUGINPlugin::get_parameters(
-    std::shared_ptr<torch::jit::script::Module> module,
-    std::vector<torch::Tensor>& params)
-{
-    for (const auto& tensor : module->parameters()) {
-        if (tensor.requires_grad())
-            params.push_back(tensor);
-    }
-}
-
-void NEURON_PLUGINPlugin::print_parameters(torch::jit::script::Module model)
-{
-    // Get the parameters of the module
-    std::vector<torch::Tensor> params;
-    get_parameters(std::make_shared<torch::jit::script::Module>(model), params);
-
-        std::cout << "Value:\n" << params << std::endl;
-
 }
 
 
