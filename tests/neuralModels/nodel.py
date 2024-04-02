@@ -4,37 +4,27 @@ import torch.optim as optim
 class Model(torch.nn.Module):
     def __init__(self):
         super(Model, self).__init__()
-        self.linear = torch.nn.Linear(30, 1)
+        
+        self.flatten = torch.nn.Flatten()  # Flatten the input tensor
+        self.linear = torch.nn.Linear(30 * 50, 1)  # Adjusted input size to match the size of each flow's content
+        # self.linear = torch.nn.Linear(30, 1)
         # self.optimizer = optim.SGD(self.parameters(), lr=0.01)
 
     def forward(self, x):
-        return self.linear(x)
+        y = self.flatten(x)
+        return self.linear(y)
 
     @torch.jit.export
-    def training_step(self, batch) -> torch.Tensor:
-        # batch = batch.view(1, -1)
+    def training_step(self, normalized_batch) -> torch.Tensor:
 
-        # if batch.shape != (1, 30):
-        #     raise ValueError("Input tensor must have shape (1, 30)")
+         # Forward pass
+        output = self.forward(normalized_batch)
 
-        # normalize data
-        mean = torch.mean(batch, dim=0)
-        std = torch.std(batch, dim=0)
-        normalized_input = (batch - mean) / std
-
-        #min-max normalization
-        min_value = 0
-        max_value = 2000
-
-        normalized_data = (batch - min_value) / (max_value - min_value)
-
-        # Forward pass
-        output = self.forward(normalized_data)
-        
         # Custom training step logic
-        targ = torch.mean(normalized_data,dim=-1,keepdim=True)
-        loss = torch.nn.functional.mse_loss(output, targ)
-        
+        target = torch.mean(normalized_batch, dim=(1,2))  # Shape: (16, 30, 150)
+        target = target.unsqueeze(1)
+
+        loss = torch.nn.functional.mse_loss(output, target)
         # self.optimizer.zero_grad()
         # loss.backward()
         # self.optimizer.step()
@@ -48,13 +38,22 @@ model = Model()
 scripted_model = torch.jit.script(model)
 scripted_model.save("scripted_model.pth")
 
-target = torch.linspace(.0, 300.0, 30)
+target = torch.randn(16,30,50)
 print("target: \n" + str(target))
 
-print("mean")
+print("forward")
+output = model.forward(target)
+print(output)
 
-print(torch.mean(target,dim=0))
+print("train")
 
 print(
 scripted_model.training_step(target)
 )
+print("target")
+
+tmp = torch.mean(target, dim=(1,2))  # Shape: (16, 30, 150)
+tmp = tmp.unsqueeze(1)
+
+print(tmp)
+print(tmp.shape)
