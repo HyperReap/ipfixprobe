@@ -275,6 +275,7 @@ void NEURON_PLUGINPlugin::nn_inference()
 torch::Tensor NEURON_PLUGINPlugin::create_tensor_based_on_flow_array()
 {
     int batches_in_epoch = 0; //todo renaqme, feels weird
+    return torch::randn({_batch_size, _buffer_count, _content_size}, torch::kFloat32);
     torch::Tensor concatenated_tensor = torch::zeros({_batch_size, _buffer_count, _content_size}, torch::kFloat32);
 
     for (auto record : this->_flow_array)
