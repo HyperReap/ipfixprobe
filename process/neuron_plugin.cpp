@@ -62,6 +62,7 @@ NEURON_PLUGINPlugin::NEURON_PLUGINPlugin()
     
     model_path = "../tests/neuralModels/scripted_model.pth";
     state_dict_path = DEFAULT_STATE_DICT;
+    should_continue_training = false;
     
 }
 
@@ -88,11 +89,13 @@ void NEURON_PLUGINPlugin::init(const char* params)
     this->is_inference_mode = parser.m_inference;
     this->model_path = parser.m_model_path;
     this->state_dict_path = parser.m_state_dict_path;
+    this->should_continue_training = parser.m_continue;
     
 
     std::cout<<"inference:" << this->is_inference_mode<<std::endl;
     std::cout<<"model_path:" << this->model_path<<std::endl;
     std::cout<<"state_dict:" << this->state_dict_path<<std::endl<<std::endl;
+    std::cout<<"continue:" << this->should_continue_training<<std::endl<<std::endl;
 
     this->_model = this->load_model();
 
@@ -106,7 +109,7 @@ void NEURON_PLUGINPlugin::init(const char* params)
         // Set the module to training mode if you want gradients
         this->_model.train();
 
-        if(state_dict_path != DEFAULT_STATE_DICT) 
+        if(this->should_continue_training) 
         {
             std::vector<torch::Tensor> loaded_params = load_state_dict();
             if(loaded_params.size() > 0)
@@ -114,7 +117,8 @@ void NEURON_PLUGINPlugin::init(const char* params)
         }
 
         std::vector<at::Tensor> parameters;
-        for (const auto& params : _model.parameters()) {
+        for (const auto& params : _model.parameters()) 
+        {
             parameters.push_back(params);
         }
 
