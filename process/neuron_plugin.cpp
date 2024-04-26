@@ -69,7 +69,7 @@ NEURON_PLUGINPlugin::~NEURON_PLUGINPlugin()
     if(_flow_array.size() > 0)
         _flow_array.clear();
 
-    // free(this->_optimizer); //TODO:: this calls second free?
+    // free(this->_optimizer); //this calls second free, keeping here as comment for future
     close();
 }
 
@@ -218,7 +218,6 @@ void NEURON_PLUGINPlugin::pre_export(Flow& rec)
         {
             save_state_dict();
             _should_skip_rest_of_traffic  = true;
-            // exit(1);//todo better
         }
 
         this->_epoch_size += this->_flow_array.size();
@@ -257,7 +256,6 @@ void NEURON_PLUGINPlugin::nn_training()
 void NEURON_PLUGINPlugin::nn_inference()
 {
     printf("run inference on saved model\n");
-    //todo je divny ze pakety veee flows jsou stejne
     auto tensor  = create_tensor_based_on_flow_array();
 
     std::cout<<"tensor: "<<std::endl<<tensor<<std::endl;
@@ -275,7 +273,7 @@ void NEURON_PLUGINPlugin::nn_inference()
 
 torch::Tensor NEURON_PLUGINPlugin::create_tensor_based_on_flow_array()
 {
-    int batches_in_epoch = 0; //todo renaqme, feels weird
+    int batches_in_epoch = 0; 
     // return torch::randn({_batch_size, _buffer_count, _content_size}, torch::kFloat32);
     torch::Tensor concatenated_tensor = torch::zeros({_batch_size, _buffer_count, _content_size}, torch::kFloat32);
 
