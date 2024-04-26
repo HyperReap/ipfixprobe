@@ -89,6 +89,7 @@ void NEURON_PLUGINPlugin::init(const char* params)
     this->state_dict_path = parser.m_state_dict_path;
     this->should_continue_training = parser.m_continue;
     this->should_dump_tensors = parser.m_dump;
+    this->dump_path = parser.m_dump_path;
     this->_learning_rate = parser.m_lr;
     
 
@@ -97,6 +98,7 @@ void NEURON_PLUGINPlugin::init(const char* params)
     std::cout<<"state_dict:" << this->state_dict_path<<std::endl<<std::endl;
     std::cout<<"continue:" << this->should_continue_training<<std::endl<<std::endl;
     std::cout<<"dump:" << this->should_dump_tensors<<std::endl<<std::endl;
+    std::cout<<"dump path:" << this->dump_path<<std::endl<<std::endl;
     std::cout<<"lr:" << this->_learning_rate<<std::endl<<std::endl;
 
     this->_model = this->load_model();
@@ -212,10 +214,15 @@ void NEURON_PLUGINPlugin::pre_export(Flow& rec)
         return;
     }
 
+    if(this->should_dump_tensors)
+    {
+        dump_data();
+    }
+
     if(this->is_inference_mode)
     {
         nn_inference();
-    }//todo dump metoda
+    }
     else
     {
         if(this->_epoch_count > this->_epoch_count_limit) 
@@ -301,6 +308,28 @@ torch::Tensor NEURON_PLUGINPlugin::create_tensor_based_on_flow_array()
     return concatenated_tensor;
 }
 
+
+void NEURON_PLUGINPlugin::dump_data()
+{
+      // Convert each tensor to a string
+    std::stringstream ss;
+    auto tensor  = create_tensor_based_on_flow_array();
+    ss << tensor << "\n\n\n";
+
+    // Write the string representations to a text file
+    std::ofstream outFile(this->dump_path,std::ios::app);
+
+    if (outFile.is_open()) 
+    {
+        outFile << ss.str();
+        outFile.close();
+        std::cout << "Tensors dumped to tensors.txt successfully." << std::endl;
+    }
+    else 
+    {
+        std::cerr << "Unable to open file for writing." << std::endl;
+    }
+}
 
 //https://discuss.pytorch.org/t/saving-and-loading-model-with-libtorch-c/184482
 void NEURON_PLUGINPlugin::save_state_dict()
