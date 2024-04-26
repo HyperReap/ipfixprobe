@@ -30,21 +30,21 @@
 #include <torch/script.h>
 #include <torch/torch.h>
 
-#include "neuron_plugin.hpp"
+#include "neural.hpp"
 using namespace torch::autograd;
 
 namespace ipxp {
 
-int neuronRecord::REGISTERED_ID = -1;
+int NeuralRecord::REGISTERED_ID = -1;
 
 __attribute__((constructor)) static void register_this_plugin()
 {
-    static PluginRecord rec = PluginRecord("neuron", []() { return new NEURON_PLUGINPlugin(); });
+    static PluginRecord rec = PluginRecord("neuron", []() { return new NEURALPlugin(); });
     register_plugin(&rec);
-    neuronRecord::REGISTERED_ID = register_extension();
+    NeuralRecord::REGISTERED_ID = register_extension();
 }
 
-NEURON_PLUGINPlugin::NEURON_PLUGINPlugin() 
+NEURALPlugin::NEURALPlugin() 
 {
     _learning_rate = LEARNING_RATE;
     _content_size = CONTENT_SIZE;           // max length of packet
@@ -64,7 +64,7 @@ NEURON_PLUGINPlugin::NEURON_PLUGINPlugin()
     should_dump_tensors = false;
 }
 
-NEURON_PLUGINPlugin::~NEURON_PLUGINPlugin()
+NEURALPlugin::~NEURALPlugin()
 {
     if(_flow_array.size() > 0)
         _flow_array.clear();
@@ -73,7 +73,7 @@ NEURON_PLUGINPlugin::~NEURON_PLUGINPlugin()
     close();
 }
 
-void NEURON_PLUGINPlugin::init(const char* params) 
+void NEURALPlugin::init(const char* params) 
 {
     printf("INIT\n");
 
@@ -133,28 +133,28 @@ void NEURON_PLUGINPlugin::init(const char* params)
     }
 }
 
-void NEURON_PLUGINPlugin::close() {}
+void NEURALPlugin::close() {}
 
-ProcessPlugin* NEURON_PLUGINPlugin::copy()
+ProcessPlugin* NEURALPlugin::copy()
 {
-    return new NEURON_PLUGINPlugin(*this);
+    return new NEURALPlugin(*this);
 }
 
-int NEURON_PLUGINPlugin::pre_create(Packet& pkt)
+int NEURALPlugin::pre_create(Packet& pkt)
 {
     return 0;
 }
 
-int NEURON_PLUGINPlugin::pre_update(Flow& rec, Packet& pkt)
+int NEURALPlugin::pre_update(Flow& rec, Packet& pkt)
 {
     return 0;
 }
 
 
 
-int NEURON_PLUGINPlugin::post_create(Flow& rec, const Packet& pkt)
+int NEURALPlugin::post_create(Flow& rec, const Packet& pkt)
 {
-    neuronRecord* record = new neuronRecord(); // created new flow, can keep 30 packets from it
+    NeuralRecord* record = new NeuralRecord(); // created new flow, can keep 30 packets from it
     rec.add_extension(record); // register this flow
     update_record(record, pkt);
 
@@ -162,14 +162,14 @@ int NEURON_PLUGINPlugin::post_create(Flow& rec, const Packet& pkt)
 }
 
 
-int NEURON_PLUGINPlugin::post_update(Flow& rec, const Packet& pkt)
+int NEURALPlugin::post_update(Flow& rec, const Packet& pkt)
 {
-    neuronRecord* data = static_cast<neuronRecord*>(rec.get_extension(neuronRecord::REGISTERED_ID));
+    NeuralRecord* data = static_cast<NeuralRecord*>(rec.get_extension(NeuralRecord::REGISTERED_ID));
     update_record(data, pkt);
     return 0;
 }
 
-void NEURON_PLUGINPlugin::update_record(neuronRecord* data, const Packet& pkt)
+void NEURALPlugin::update_record(NeuralRecord* data, const Packet& pkt)
 {
     if(_should_skip_rest_of_traffic)
         return;
@@ -198,13 +198,13 @@ void NEURON_PLUGINPlugin::update_record(neuronRecord* data, const Packet& pkt)
 }
 
 
-void NEURON_PLUGINPlugin::pre_export(Flow& rec)
+void NEURALPlugin::pre_export(Flow& rec)
 {
     if(_should_skip_rest_of_traffic)
         return;
 
     // add record to flowArray
-    neuronRecord* data = static_cast<neuronRecord*>(rec.get_extension(neuronRecord::REGISTERED_ID));
+    NeuralRecord* data = static_cast<NeuralRecord*>(rec.get_extension(NeuralRecord::REGISTERED_ID));
     _flow_array.push_back(data);
 
     // check if there is enough flows in batch
@@ -247,7 +247,7 @@ void NEURON_PLUGINPlugin::pre_export(Flow& rec)
     this->_flow_array.clear();
 }
 
-void NEURON_PLUGINPlugin::nn_training()
+void NEURALPlugin::nn_training()
 {
     auto tensor  = create_tensor_based_on_flow_array();
 
@@ -264,7 +264,7 @@ void NEURON_PLUGINPlugin::nn_training()
     std::cout << "Epoch: " << this->_epoch_count << " | Loss: " << loss.item<float>() << std::endl;
 }
 
-void NEURON_PLUGINPlugin::nn_inference()
+void NEURALPlugin::nn_inference()
 {
     printf("run inference on saved model\n");
     auto tensor  = create_tensor_based_on_flow_array();
@@ -282,7 +282,7 @@ void NEURON_PLUGINPlugin::nn_inference()
     return;
 }
 
-torch::Tensor NEURON_PLUGINPlugin::create_tensor_based_on_flow_array()
+torch::Tensor NEURALPlugin::create_tensor_based_on_flow_array()
 {
     int batches_in_epoch = 0; 
     // return torch::randn({_batch_size, _buffer_count, _content_size}, torch::kFloat32);
@@ -309,7 +309,7 @@ torch::Tensor NEURON_PLUGINPlugin::create_tensor_based_on_flow_array()
 }
 
 
-void NEURON_PLUGINPlugin::dump_data()
+void NEURALPlugin::dump_data()
 {
       // Convert each tensor to a string
     std::stringstream ss;
@@ -332,7 +332,7 @@ void NEURON_PLUGINPlugin::dump_data()
 }
 
 //https://discuss.pytorch.org/t/saving-and-loading-model-with-libtorch-c/184482
-void NEURON_PLUGINPlugin::save_state_dict()
+void NEURALPlugin::save_state_dict()
 {
     printf("End of EPOCHS - Save Model\n");
     auto named_parameters = _model.named_parameters();
@@ -363,7 +363,7 @@ void NEURON_PLUGINPlugin::save_state_dict()
     }
 }
 
-std::vector<torch::Tensor> NEURON_PLUGINPlugin::load_state_dict()
+std::vector<torch::Tensor> NEURALPlugin::load_state_dict()
 {
     std::vector<torch::Tensor> loaded_state_dict;
     try 
@@ -385,7 +385,7 @@ std::vector<torch::Tensor> NEURON_PLUGINPlugin::load_state_dict()
 
 // As such trying to save models parameters and load them into model
 
-void NEURON_PLUGINPlugin::set_state_dict_parameters(std::vector<torch::Tensor> loaded_state_dict)
+void NEURALPlugin::set_state_dict_parameters(std::vector<torch::Tensor> loaded_state_dict)
 {
     try 
     {
@@ -411,7 +411,7 @@ void NEURON_PLUGINPlugin::set_state_dict_parameters(std::vector<torch::Tensor> l
 }
 
 // Load torchscript model from fileS
-torch::jit::script::Module NEURON_PLUGINPlugin::load_model()
+torch::jit::script::Module NEURALPlugin::load_model()
 {
     torch::jit::script::Module loaded_model;
     try {

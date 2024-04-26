@@ -1,6 +1,6 @@
 /**
- * \file neuron_plugin.hpp
- * \brief Plugin for parsing neuron_plugin traffic.
+ * \file neural.hpp
+ * \brief Plugin for parsing traffic using neural networks.
  * \author PETR URBANEK urbanek.vk@gmail.com
  * \date 2023
  */
@@ -26,8 +26,8 @@
  *
  */
 
-#ifndef IPXP_PROCESS_NEURON_PLUGIN_HPP
-#define IPXP_PROCESS_NEURON_PLUGIN_HPP
+#ifndef IPXP_PROCESS_NEURAL_HPP
+#define IPXP_PROCESS_NEURAL_HPP
 
 #include <cstring>
 
@@ -50,7 +50,7 @@ namespace ipxp {
 #define BATCH_SIZE         64 // flows in batch
 #define DEFAULT_STATE_DICT "~/ipfixprobe/tests/neuralModels/state_dict_values.pt"
 
-#define NEURON_PLUGIN_UNIREC_TEMPLATE "NEURON_CONTENT" /* TODO: unirec template */
+#define NEURAL_UNIREC_TEMPLATE "NEURAL_CONTENT" /* TODO: unirec template */
 
 UR_FIELDS (
    /* TODO: unirec fields definition */
@@ -82,27 +82,25 @@ public:
    }
 };
 
-struct neuroContentArray {
-   neuroContentArray() : size(0.0){ };
-
+struct NeuralContentArray {
+   NeuralContentArray() : size(0.0){ };
    size_t size;
-
    uint8_t data[CONTENT_SIZE+1];
 };
 
 /**
- * \brief Flow record extension header for storing parsed NEURON_PLUGIN data.
+ * \brief Flow record extension header for storing parsed NEURAL data.
  */
-struct neuronRecord : public RecordExt {
+struct NeuralRecord : public RecordExt {
    static int REGISTERED_ID;
 
    //first 30 packets of single flow
-   neuroContentArray packets[BUFFER_COUNT]; 
+   NeuralContentArray packets[BUFFER_COUNT]; 
    
    //order of incoming pakcets, starting at 0
    uint8_t order;
 
-   neuronRecord() : RecordExt(REGISTERED_ID)
+   NeuralRecord() : RecordExt(REGISTERED_ID)
    {
       order = 0;
    }
@@ -114,7 +112,7 @@ struct neuronRecord : public RecordExt {
 
    const char *get_unirec_tmplt() const
    {
-      return NEURON_PLUGIN_UNIREC_TEMPLATE;
+      return NEURAL_UNIREC_TEMPLATE;
    }
 #endif
 
@@ -134,21 +132,21 @@ struct neuronRecord : public RecordExt {
 };
 
 /**
- * \brief Process plugin for parsing NEURON_PLUGIN packets.
+ * \brief Process plugin for parsing NEURAL packets.
  */
-class NEURON_PLUGINPlugin : public ProcessPlugin
+class NEURALPlugin : public ProcessPlugin
 {
 public:
-   NEURON_PLUGINPlugin();
-   ~NEURON_PLUGINPlugin();
+   NEURALPlugin();
+   ~NEURALPlugin();
    void init(const char *params);
    void close();
    OptionsParser *get_parser() const { return new NeuralOptParser(); }
-   std::string get_name() const { return "neuron_plugin"; }
-   RecordExt *get_ext() const { return new neuronRecord(); }
+   std::string get_name() const { return "neural"; }
+   RecordExt *get_ext() const { return new NeuralRecord(); }
    ProcessPlugin *copy();
 
-   void update_record(neuronRecord *data, const Packet &pkt);
+   void update_record(NeuralRecord *data, const Packet &pkt);
    int pre_create(Packet &pkt);
    int post_create(Flow &rec, const Packet &pkt);
    int pre_update(Flow &rec, Packet &pkt);
@@ -176,7 +174,7 @@ public:
    // torch::optim::Adam* _optimizer;
    torch::optim::SGD* _optimizer;
 
-   std::vector<neuronRecord*> _flow_array;
+   std::vector<NeuralRecord*> _flow_array;
 
    double _learning_rate;
    unsigned _content_size; // max length of packet
@@ -192,5 +190,5 @@ public:
 };
 
 }
-#endif /* IPXP_PROCESS_NEURON_PLUGIN_HPP */
+#endif /* IPXP_PROCESS_NEURAL_HPP */
 
