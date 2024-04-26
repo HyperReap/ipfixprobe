@@ -62,18 +62,21 @@ class NeuralOptParser : public OptionsParser
 public:
    bool m_inference;
    bool m_continue;
+   bool m_dump;
+   int m_lr;
    std::string m_model_path;
    std::string m_state_dict_path;
 
    NeuralOptParser() : OptionsParser("neural", "Plugin for training/inference using neural networks of packet flows"),
     m_inference(false), m_model_path("../tests/neuralModels/scripted_model.pth"),
-    m_state_dict_path(DEFAULT_STATE_DICT), m_continue(false)
+    m_state_dict_path(DEFAULT_STATE_DICT), m_continue(false), m_dump(false), m_lr(LEARNING_RATE)
    {
       register_option("i", "inference", "", "Setup plugin for inference mode", [this](const char *arg){m_inference = true; return true;}, OptionFlags::NoArgument);
       register_option("m", "model", "", "Neural network model in tochscript", [this](const char *arg){m_model_path = arg; return true;}, OptionFlags::RequiredArgument);
       register_option("s", "state_dict", "", "State_dict of the model", [this](const char *arg){m_state_dict_path = arg; return true;}, OptionFlags::OptionalArgument);
       register_option("c", "continue", "", "Continue training with specified State_dict of the model", [this](const char *arg){m_continue = true; return true;}, OptionFlags::OptionalArgument);
-      register_option("d", "dump", "", "Collect ddataset as tensors", [this](const char *arg){m_continue = true; return true;}, OptionFlags::OptionalArgument);
+      register_option("d", "dump", "", "Collect dataset as tensors", [this](const char *arg){m_dump = true; return true;}, OptionFlags::OptionalArgument);
+      register_option("lr", "lr", "", "set learnign rate for training", [this](const char *arg){m_lr = arg; return true;}, OptionFlags::OptionalArgument);
    }
 };
 
@@ -162,6 +165,7 @@ public:
    private:
    bool is_inference_mode;
    bool should_continue_training;
+   bool should_dump_tensors;
    std::string model_path;
    std::string state_dict_path;
 
