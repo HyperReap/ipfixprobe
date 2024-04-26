@@ -175,7 +175,7 @@ void NEURON_PLUGINPlugin::update_record(neuronRecord* data, const Packet& pkt)
     }
 
     ///  overflow
-    size_t min = pkt.packet_len < CONTENT_SIZE ? pkt.packet_len: CONTENT_SIZE;
+    size_t min = pkt.payload_len < CONTENT_SIZE ? pkt.payload_len: CONTENT_SIZE;
     data->packets[data->order].size = min;
 
     // std::cout<< "order :" << (int)data->order << " | packet len : " << pkt.packet_len << std::endl;
@@ -186,7 +186,7 @@ void NEURON_PLUGINPlugin::update_record(neuronRecord* data, const Packet& pkt)
     }
 
     auto& target_packet = data->packets[data->order];
-    std::copy(pkt.packet, pkt.packet + target_packet.size , target_packet.data);
+    std::copy(pkt.payload, pkt.payload + target_packet.size , target_packet.data);
 
     data->order++;
 }
@@ -257,7 +257,7 @@ void NEURON_PLUGINPlugin::nn_training()
 void NEURON_PLUGINPlugin::nn_inference()
 {
     printf("run inference on saved model\n");
-
+    //todo je divny ze pakety veee flows jsou stejne
     auto tensor  = create_tensor_based_on_flow_array();
 
     std::cout<<"tensor: "<<std::endl<<tensor<<std::endl;
