@@ -1,8 +1,8 @@
 import torch
 import torch.optim as optim
 
-packets = 5
-buffercount = 10
+packets_count = 1
+content_size = 3
 flows = 16
 
 class Model(torch.nn.Module):
@@ -10,12 +10,12 @@ class Model(torch.nn.Module):
         super(Model, self).__init__()
         
         self.flatten = torch.nn.Flatten()  # Flatten the input tensor
-        self.linear = torch.nn.Linear(packets * buffercount, 1)  # Adjusted input size to match the size of each flow's content
+        self.linear = torch.nn.Linear(packets_count * content_size, 1)  # Adjusted input size to match the size of each flow's content
         # self.linear = torch.nn.Linear(30, 1)
         # self.optimizer = optim.SGD(self.parameters(), lr=0.01)
 
     def forward(self, x):
-        y = self.flatten(x)
+        y = self.flatten(x) #16*5*10
         return self.linear(y)
 
     @torch.jit.export
@@ -23,10 +23,10 @@ class Model(torch.nn.Module):
 
          # Forward pass
         output = self.forward(normalized_batch)
+        output = output.squeeze()
 
         # Custom training step logic
         target = torch.mean(normalized_batch, dim=(1,2))  # Shape: (16, 30, 150)
-        target = target.unsqueeze(1)
 
         loss = torch.nn.functional.mse_loss(output, target)
         # self.optimizer.zero_grad()
@@ -42,7 +42,7 @@ model = Model()
 scripted_model = torch.jit.script(model)
 scripted_model.save("scripted_model.pth")
 
-target = torch.randn(flows,packets,buffercount)
+target = torch.randn(flows,packets_count,content_size)
 print("target: \n" + str(target))
 
 print("forward")

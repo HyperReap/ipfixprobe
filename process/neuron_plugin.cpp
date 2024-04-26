@@ -35,8 +35,6 @@ using namespace torch::autograd;
 
 namespace ipxp {
 
-#define MIN(a, b) (((a) < (b)) ? (a) : (b))
-
 int neuronRecord::REGISTERED_ID = -1;
 
 __attribute__((constructor)) static void register_this_plugin()
@@ -98,6 +96,8 @@ void NEURON_PLUGINPlugin::init(const char* params)
     std::cout<<"continue:" << this->should_continue_training<<std::endl<<std::endl;
 
     this->_model = this->load_model();
+
+    _should_skip_rest_of_traffic  = false;
 
     if(this->is_inference_mode)
     {
@@ -165,6 +165,9 @@ int NEURON_PLUGINPlugin::post_update(Flow& rec, const Packet& pkt)
 
 void NEURON_PLUGINPlugin::update_record(neuronRecord* data, const Packet& pkt)
 {
+    if(_should_skip_rest_of_traffic)
+        return;
+
     if(data->order >= this->_buffer_count)
     {
         // printf("Too many packets in this flow > %d\n", BUFFER_COUNT);
@@ -185,19 +188,15 @@ void NEURON_PLUGINPlugin::update_record(neuronRecord* data, const Packet& pkt)
     auto& target_packet = data->packets[data->order];
     std::copy(pkt.packet, pkt.packet + target_packet.size , target_packet.data);
 
-    prepare_data(data);
     data->order++;
 }
-
-void NEURON_PLUGINPlugin::prepare_data(neuronRecord* data)
-{
-    //TODO SANITIZE DATA or anything we will want
-}
-
 
 
 void NEURON_PLUGINPlugin::pre_export(Flow& rec)
 {
+    if(_should_skip_rest_of_traffic)
+        return;
+
     // add record to flowArray
     neuronRecord* data = static_cast<neuronRecord*>(rec.get_extension(neuronRecord::REGISTERED_ID));
     _flow_array.push_back(data);
@@ -212,13 +211,14 @@ void NEURON_PLUGINPlugin::pre_export(Flow& rec)
     if(this->is_inference_mode)
     {
         nn_inference();
-    }
+    }//todo dump metoda
     else
     {
         if(this->_epoch_count > this->_epoch_count_limit) 
         {
             save_state_dict();
-            exit(1);
+            _should_skip_rest_of_traffic  = true;
+            // exit(1);//todo better
         }
 
         this->_epoch_size += this->_flow_array.size();
@@ -239,22 +239,19 @@ void NEURON_PLUGINPlugin::pre_export(Flow& rec)
 
 void NEURON_PLUGINPlugin::nn_training()
 {
-        auto tensor  = create_tensor_based_on_flow_array();
+    auto tensor  = create_tensor_based_on_flow_array();
 
-        // std::cout<<"tensor: "<<std::endl<<tensor<<std::endl;
-        // auto mean = torch::mean(tensor);
-        // std::cout<<"mean: "<<mean<<std::endl;
+    // std::cout<<"tensor: "<<std::endl<<tensor<<std::endl;
+    // auto mean = torch::mean(tensor);
+    // std::cout<<"mean: "<<mean<<std::endl;
 
-        this->_optimizer->zero_grad();
-        torch::Tensor loss = this->_model.run_method("training_step", tensor).toTensor();
+    this->_optimizer->zero_grad();
+    torch::Tensor loss = this->_model.run_method("training_step", tensor).toTensor();
 
-        loss.backward();
-        this->_optimizer->step();
-        
-        // std::cout << "Epoch: " << this->_epoch_count << " | batch_count_in_epoch: " << batch_count_in_epoch << " | Loss: " << loss.item<float>() << std::endl;
-        std::cout << "Epoch: " << this->_epoch_count << " | Loss: " << loss.item<float>() << std::endl;
-
-
+    loss.backward();
+    this->_optimizer->step();
+    
+    std::cout << "Epoch: " << this->_epoch_count << " | Loss: " << loss.item<float>() << std::endl;
 }
 
 void NEURON_PLUGINPlugin::nn_inference()
@@ -279,7 +276,7 @@ void NEURON_PLUGINPlugin::nn_inference()
 torch::Tensor NEURON_PLUGINPlugin::create_tensor_based_on_flow_array()
 {
     int batches_in_epoch = 0; //todo renaqme, feels weird
-    return torch::randn({_batch_size, _buffer_count, _content_size}, torch::kFloat32);
+    // return torch::randn({_batch_size, _buffer_count, _content_size}, torch::kFloat32);
     torch::Tensor concatenated_tensor = torch::zeros({_batch_size, _buffer_count, _content_size}, torch::kFloat32);
 
     for (auto record : this->_flow_array)
@@ -294,8 +291,6 @@ torch::Tensor NEURON_PLUGINPlugin::create_tensor_based_on_flow_array()
                 auto data = record->packets[i].data[j];
                 packet_data_tensor[i][j] = data/255.0; //normalization
             }
-                // std::cout<<std::endl<<std::endl;
-                // std::cout<<packet_data_tensor <<std::endl;
         }
         // Concatenate packet_data_tensor along the batch dimension
         concatenated_tensor[batches_in_epoch] = packet_data_tensor;
@@ -397,50 +392,4 @@ torch::jit::script::Module NEURON_PLUGINPlugin::load_model()
 
     return loaded_model;
 }
-
-
-// --------------- NOTES --------------- //
-
-
-    /// Not that sure what this is..
-    ///
-    // // Iterate through named parameters and access them
-    // for (const auto& pair : module.named_parameters()) {
-    //     const std::string& name = pair.name;
-    //     torch::Tensor parameter = pair.value;
-
-    //         // Access the gradient tensor
-    //     torch::Tensor gradient_tensor = parameter.grad();
-
-    //     if (gradient_tensor.defined()) {
-    //         // Print the parameter name and the gradient values
-    //         std::cout << "Parameter name: " << name << ", Gradient values: " << gradient_tensor
-    //         << std::endl;
-    //     } else {
-    //         // If gradient is not defined, it's likely a non-trainable parameter
-    //         std::cout << "Parameter name: " << name << " is not trainable (no gradient
-    //         available)." << std::endl;
-    //     }
-
-    // std::cout<< module.parameters() <<std::endl;
-    // std::cout<< module->parameters()[0] <<std::endl;
-    // std::cout<< module->parameters()[0].grad <<std::endl;
-    // print(module.parameters()[0]);
-    // print(module.parameters()[0].grad);
-
-    // auto loss_tensor = loss.toTensor();
-    // loss_tensor.backward();
-    // std::cout << "loss.toTensor(): " << loss_tensor << std::endl;
-    
-///This is not working
-    // // Print the parameters
-    // for (const auto& par : params) {
-    //     std::string name = par.name();
-    //     torch::Tensor value = par.values(); // Assuming the parameter is a tensor
-
-    //     // Print the information
-    //     std::cout << "Name: " << name << ", Type: " << value << std::endl;
-    //     std::cout << "Value:\n" << value << std::endl;
-    // }
-
 } // namespace ipxp

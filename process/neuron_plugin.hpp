@@ -42,12 +42,12 @@
 
 namespace ipxp {
 
-#define LEARNING_RATE      0.1
-#define CONTENT_SIZE       10 //max length of packet
-#define BUFFER_COUNT       5 // packets taken from flow
+#define LEARNING_RATE      0.01
+#define CONTENT_SIZE       3 //max length of packet
+#define BUFFER_COUNT       1 // packets taken from flow
 #define EPOCH_COUNT_LIMIT  4 // epoch for training
-#define EPOCH_SIZE_LIMIT   128 // flows in epoch
-#define BATCH_SIZE         16 // flows in batch
+#define EPOCH_SIZE_LIMIT   1024 // flows in epoch
+#define BATCH_SIZE         64 // flows in batch
 #define DEFAULT_STATE_DICT "~/ipfixprobe/tests/neuralModels/state_dict_values.pt"
 
 #define NEURON_PLUGIN_UNIREC_TEMPLATE "NEURON_CONTENT" /* TODO: unirec template */
@@ -73,6 +73,7 @@ public:
       register_option("m", "model", "", "Neural network model in tochscript", [this](const char *arg){m_model_path = arg; return true;}, OptionFlags::RequiredArgument);
       register_option("s", "state_dict", "", "State_dict of the model", [this](const char *arg){m_state_dict_path = arg; return true;}, OptionFlags::OptionalArgument);
       register_option("c", "continue", "", "Continue training with specified State_dict of the model", [this](const char *arg){m_continue = true; return true;}, OptionFlags::OptionalArgument);
+      register_option("d", "dump", "", "Collect ddataset as tensors", [this](const char *arg){m_continue = true; return true;}, OptionFlags::OptionalArgument);
    }
 };
 
@@ -178,6 +179,8 @@ public:
    unsigned _epoch_size; // flows in epoch
    unsigned _epoch_size_limit; // maximum flows in epoch
    unsigned _batch_size; // flows in batch
+
+   bool _should_skip_rest_of_traffic; // skip the rest when the model is trained
 
 };
 
