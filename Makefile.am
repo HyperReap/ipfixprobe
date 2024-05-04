@@ -135,8 +135,8 @@ ipfixprobe_process_src=\
 		process/nettisa.cpp \
 		process/flow_hash.hpp \
 		process/flow_hash.cpp \
-		process/neuron_plugin.hpp \
-		process/neuron_plugin.cpp 
+		process/neural.hpp \
+		process/neural.cpp 
 
 if WITH_QUIC
 ipfixprobe_process_src+=\

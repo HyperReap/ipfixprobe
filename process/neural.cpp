@@ -1,6 +1,6 @@
 /**
- * \file neuron_plugin.cpp
- * \brief Plugin for parsing neuron_plugin traffic.
+ * \file neural.cpp
+ * \brief Plugin for parsing neura; traffic.
  * \author PETR URBANEK urbanek.vk@gmail.com
  * \date 2023
  */
@@ -39,7 +39,7 @@ int NeuralRecord::REGISTERED_ID = -1;
 
 __attribute__((constructor)) static void register_this_plugin()
 {
-    static PluginRecord rec = PluginRecord("neuron", []() { return new NEURALPlugin(); });
+    static PluginRecord rec = PluginRecord("neural", []() { return new NEURALPlugin(); });
     register_plugin(&rec);
     NeuralRecord::REGISTERED_ID = register_extension();
 }
@@ -268,6 +268,13 @@ void NEURALPlugin::nn_inference()
 {
     printf("run inference on saved model\n");
     auto tensor  = create_tensor_based_on_flow_array();
+    //todo single Flow -> batchsize = 1
+    // tady ukoncoit casovac nad jendim tokem, apak vzyhodnoti Cas
+    //execution time
+    //kolik Flows jsem SCHPNY UDELAT ZA SEUNDU
+    //PRI NEJHORSIm tam dat ciste timewatch
+
+    
 
     std::cout<<"tensor: "<<std::endl<<tensor<<std::endl;
     auto mean = torch::mean(tensor);

@@ -54,7 +54,7 @@ namespace ipxp {
 
 UR_FIELDS (
    /* TODO: unirec fields definition */
-   bytes NEURON_CONTENT
+   bytes NEURAL_CONTENT
 )
 
 class NeuralOptParser : public OptionsParser
@@ -94,6 +94,9 @@ struct NeuralContentArray {
 struct NeuralRecord : public RecordExt {
    static int REGISTERED_ID;
 
+    //todo check execution time in cpp, zmena na zakladde velkistoi neuronkz (*parametu)
+    
+
    //first 30 packets of single flow
    NeuralContentArray packets[BUFFER_COUNT]; 
    
@@ -124,7 +127,7 @@ struct NeuralRecord : public RecordExt {
    const char **get_ipfix_tmplt() const
    {
       static const char *ipfix_template[] = {
-         IPFIX_NEURON_TEMPLATE(IPFIX_FIELD_NAMES)
+         IPFIX_NEURAL_TEMPLATE(IPFIX_FIELD_NAMES)
          NULL
       };
       return ipfix_template;
