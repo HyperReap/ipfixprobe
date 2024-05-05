@@ -322,24 +322,42 @@ torch::Tensor NEURALPlugin::create_tensor_based_on_flow_array()
 
 void NEURALPlugin::dump_data()
 {
+    std::ofstream outfile(this->dump_path, std::ios_base::app);
+
+
+// Read File for t
+    // std::ifstream infile(this->dump_path);
+
+    // if (!infile.is_open()) {
+    //     std::cerr << "Failed to open file for read." << std::endl;
+    //     return;
+    // }
+
+    // while (!infile.eof()) 
+    // {
+    //     // Load tensor from file
+    //     torch::Tensor tensor;
+    //     torch::load(tensor, infile);
+    //     std::cout<<tensor<<std::endl;
+    //     // Check if tensor is non-empty
+    //     if (!tensor.defined()) {
+    //         break; // Reached end of file or error occurred
+    //     }
+    // }
+
+    // exit(1);
+
+    // Check if the file is opened successfully
+    if (!outfile.is_open()) {
+        std::cerr << "Failed to open file for writing." << std::endl;
+        return;
+    }
+
       // Convert each tensor to a string
-    std::stringstream ss;
     auto tensor  = create_tensor_based_on_flow_array();
-    ss << tensor << "\n\n\n";
-
-    // Write the string representations to a text file
-    std::ofstream outFile(this->dump_path,std::ios::app);
-
-    if (outFile.is_open()) 
-    {
-        outFile << ss.str();
-        outFile.close();
-        std::cout << "Tensors dumped to tensors.txt successfully." << std::endl;
-    }
-    else 
-    {
-        std::cerr << "Unable to open file for writing." << std::endl;
-    }
+    torch::save(tensor, outfile);
+   
+    outfile.close();
 }
 
 //https://discuss.pytorch.org/t/saving-and-loading-model-with-libtorch-c/184482
