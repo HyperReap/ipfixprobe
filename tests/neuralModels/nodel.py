@@ -1,9 +1,9 @@
 import torch
 import torch.optim as optim
 
-packets_count = 1
-content_size = 3
-flows = 16
+content_size = 30
+packets_count = 15
+flows = 64
 
 class Model(torch.nn.Module):
     def __init__(self):

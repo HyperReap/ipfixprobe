@@ -232,19 +232,22 @@ void NEURALPlugin::pre_export(Flow& rec)
             _should_skip_rest_of_traffic  = true;
         }
 
-        this->_epoch_size += this->_flow_array.size();
-
-        std::cout<<"training - epochSize: "<< _epoch_size <<std::endl;
-        nn_training();
-
-        if(this->_epoch_size >= this->_epoch_size_limit)
+        if(!_should_skip_rest_of_traffic)
         {
-            this->_epoch_size = 0;
-            this->_epoch_count++;
+            this->_epoch_size += this->_flow_array.size();
+
+            std::cout<<"training - epochSize: "<< _epoch_size <<std::endl;
+            nn_training();
+
+            if(this->_epoch_size >= this->_epoch_size_limit)
+            {
+                this->_epoch_size = 0;
+                this->_epoch_count++;
+            }
         }
     }
 
-    printf("clear flow array\n");
+    // printf("clear flow array\n");
     this->_flow_array.clear();
 }
 
@@ -267,7 +270,7 @@ void NEURALPlugin::nn_training()
 
 void NEURALPlugin::nn_inference()
 {
-    printf("run inference on saved model\n");
+    // printf("run inference on saved model\n");
     auto tensor  = create_tensor_based_on_flow_array();
     //todo single Flow -> batchsize = 1
     // tady ukoncoit casovac nad jendim tokem, apak vzyhodnoti Cas
@@ -306,7 +309,7 @@ torch::Tensor NEURALPlugin::create_tensor_based_on_flow_array()
             for (size_t j = 0; j < size; j++)
             {
                 auto data = record->packets[i].data[j];
-                packet_data_tensor[i][j] = data/255.0; //normalization
+                packet_data_tensor[i][j] = data/255.0; 
             }
         }
         // Concatenate packet_data_tensor along the batch dimension

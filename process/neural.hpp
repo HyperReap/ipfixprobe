@@ -42,9 +42,9 @@
 
 namespace ipxp {
 
-#define LEARNING_RATE      0.01
-#define CONTENT_SIZE       3 //max length of packet
-#define BUFFER_COUNT       1 // packets taken from flow
+#define LEARNING_RATE      0.05
+#define CONTENT_SIZE       30 //max length of packet
+#define BUFFER_COUNT       15 // packets taken from flow
 #define EPOCH_COUNT_LIMIT  4 // epoch for training
 #define EPOCH_SIZE_LIMIT   1024 // flows in epoch
 #define BATCH_SIZE         64 // flows in batch
