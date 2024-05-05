@@ -107,6 +107,7 @@ void NEURALPlugin::init(const char* params)
 
     if(this->is_inference_mode)
     {
+        this->_batch_size = 1;
         std::vector<torch::Tensor> loaded_params = load_state_dict();
         set_state_dict_parameters(loaded_params);
     }
@@ -276,11 +277,11 @@ void NEURALPlugin::nn_inference()
 
     
 
-    std::cout<<"tensor: "<<std::endl<<tensor<<std::endl;
-    auto mean = torch::mean(tensor);
-    std::cout<<"mean: "<<mean<<std::endl;
+    // std::cout<<"tensor: "<<std::endl<<tensor<<std::endl;
+    // auto mean = torch::mean(tensor);
+    // std::cout<<"mean: "<<mean<<std::endl;
 
-    auto output = _model.forward({tensor}).toTensor();
+    auto output = _model.forward({tensor}).toTensor()*255;
 
     std::cout<<output<<std::endl;
     std::cout<<std::endl;
